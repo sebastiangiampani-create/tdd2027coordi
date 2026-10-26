@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10294b">
+<meta name="description" content="Buscador de comisiones TDD 2027 por escuela, area curricular y turno.">
+<title>Buscador de comisiones | TDD 2027</title>
+<style>
+    :root{--ink:#142744;--muted:#596a81;--navy:#112b4e;--blue:#1a527c;--yellow:#ffcb36;--bg:#f4f7fb;--border:#dde5ee;--white:#fff;--focus:#256eb1;--shadow:0 16px 48px rgba(22,48,81,.08)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.48;-webkit-font-smoothing:antialiased}
+    button,input{font:inherit}button{cursor:pointer}
+    .top{background:linear-gradient(118deg,#0d2747 0%,#163d67 75%,#1e5476 100%);color:#fff;position:relative;overflow:hidden}
+    .top:after{content:"";position:absolute;right:-120px;top:-210px;width:490px;height:490px;border:80px solid rgba(255,255,255,.045);border-radius:50%;pointer-events:none}
+    .shell{width:min(1080px,calc(100% - 36px));margin:auto;position:relative}
+    .mast{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0 27px}
+    .brand{display:flex;gap:12px;align-items:center;font-size:13px;font-weight:750;letter-spacing:.025em}
+    .brand-mark{display:grid;place-items:center;background:var(--yellow);color:#102b4d;font-weight:900;border-radius:10px;width:38px;height:38px;font-size:16px}
+    .edition{border:1px solid rgba(255,255,255,.25);border-radius:100px;padding:7px 13px;font-size:12px;white-space:nowrap;color:#e5eefb}
+    h1,h2,h3,p{margin-top:0}h1{font-size:clamp(28px,4.3vw,46px);letter-spacing:-.045em;line-height:1.1;font-weight:780;margin-bottom:13px;max-width:740px}
+    .lead{font-size:clamp(15px,2vw,17px);color:#dce7f4;max-width:670px;line-height:1.6;margin-bottom:39px}
+    .eyebrow{color:var(--yellow);font-weight:800;text-transform:uppercase;font-size:11px;letter-spacing:.13em;margin-bottom:14px}
+    main{padding-bottom:40px}
+    .search-panel{background:#fff;border:1px solid #e8eef4;border-radius:19px;padding:clamp(19px,3.5vw,32px);box-shadow:var(--shadow);margin-top:-25px;position:relative}
+    .panel-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+    .panel-top h2{font-size:21px;line-height:1.3;margin:0 0 4px;letter-spacing:-.02em}
+    .subtitle{color:var(--muted);font-size:13px;margin:0}
+    .reload{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--border);background:#fff;border-radius:9px;padding:9px 12px;color:var(--navy);font-size:13px;font-weight:700;white-space:nowrap;transition:.2s}
+    .reload:hover{background:#f1f6fd}.reload:disabled{opacity:.55;cursor:wait}
+    .search-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:17px}
+    label{font-size:13px;font-weight:760;display:block;margin-bottom:8px}
+    .input-wrap{position:relative}.input-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#687d96;pointer-events:none}
+    .field{width:100%;border:1px solid #cbd7e5;border-radius:11px;min-height:49px;padding:12px 44px 12px 43px;background:#fff;color:var(--navy);outline:0;transition:border .16s,box-shadow .16s}
+    .field:focus{border-color:var(--focus);box-shadow:0 0 0 3px rgba(37,110,177,.14)}.field::placeholder{color:#8490a0}
+    .field[disabled]{background:#f5f7fa}
+    .dropdown{position:absolute;right:5px;top:5px;width:39px;height:39px;border:0;border-radius:8px;background:transparent;color:#61778f;display:grid;place-items:center}
+    .dropdown:hover{background:#f0f4f9}.dropdown:focus-visible,.reload:focus-visible,.map-link:focus-visible,.choose-map:focus-visible{outline:3px solid rgba(37,110,177,.45);outline-offset:2px}
+    .field-help{font-size:12px;color:#708096;margin:7px 0 0}
+    .filter-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:13px;margin-top:22px;padding-top:16px;border-top:1px solid #eef2f6}
+    .live-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.status-dot{width:8px;height:8px;border-radius:50%;background:#e7aa29;flex:none}.status-dot.ok{background:#23956c}.status-dot.bad{background:#dc594d}
+    .clear{background:none;border:0;color:#246096;text-decoration:underline;text-underline-offset:3px;font-size:13px;font-weight:650;padding:5px 0}
+    .message{display:none;background:#fff;border:1px solid var(--border);border-radius:17px;padding:42px 26px;text-align:center;margin-top:24px;box-shadow:0 9px 25px rgba(22,48,81,.035)}
+    .message.show{display:block}.message-icon{background:#eaf2fb;color:#235a8a;width:58px;height:58px;display:grid;place-items:center;border-radius:17px;margin:0 auto 15px}
+    .message h2{font-size:20px;letter-spacing:-.02em;margin:0 0 9px}.message p{max-width:600px;margin:0 auto;color:var(--muted);font-size:14px;line-height:1.7}
+    .message a{color:#1b608f}.results{display:none;margin-top:30px}.results.show{display:block}
+    .results-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:0 0 17px}
+    .results-top h2{font-size:23px;letter-spacing:-.03em;margin:0 0 2px}.results-top p{font-size:13px;color:var(--muted);margin:0}
+    .result-count{border:1px solid #d5e2ec;background:#e9f2f9;border-radius:100px;color:#20547a;font-weight:750;font-size:12px;padding:7px 11px;white-space:nowrap}
+    .result-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(310px,.95fr);gap:21px;align-items:start}
+    .cards{display:flex;flex-direction:column;gap:14px}.card{background:#fff;border:1px solid var(--border);border-radius:15px;padding:21px 21px 18px;box-shadow:0 5px 20px rgba(25,50,88,.035);transition:border-color .2s,box-shadow .2s}
+    .card.active{border-color:#4c93bd;box-shadow:0 0 0 2px rgba(76,147,189,.10),0 7px 20px rgba(25,50,88,.07)}
+    .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}
+    .tiny{color:#62778e;letter-spacing:.07em;text-transform:uppercase;font-size:10px;font-weight:820;margin:0 0 4px}.commission{font-size:26px;font-weight:830;letter-spacing:-.055em;margin:0;line-height:1.1}
+    .area-tag{font-size:11px;border-radius:8px;padding:6px 9px;background:#fff5d6;border:1px solid #ffe7a0;color:#655018;font-weight:820;text-align:right;max-width:165px}
+    .details{display:grid;grid-template-columns:1fr 1fr;gap:15px 12px}.detail-name{font-size:11px;color:#6d8092;font-weight:760;display:block;margin-bottom:2px}.detail-value{font-size:15px;font-weight:750;color:#1b3555;overflow-wrap:anywhere}
+    .detail.full{grid-column:1/-1}.venue{padding:12px 14px;background:#f6f9fc;border-radius:9px}
+    .card-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:15px;align-items:center}
+    .choose-map{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#14395e;color:#fff;border:1px solid #14395e;padding:9px 12px;border-radius:9px;text-decoration:none;font-size:12px;font-weight:750}
+    .choose-map:hover{background:#1c547a}.choose-map[aria-pressed="true"]{background:#e7f0fa;color:#17486d;border-color:#b4cde4}
+    .map-link{display:inline-flex;align-items:center;gap:5px;color:#245c88;font-size:12px;font-weight:780;text-decoration:none;padding:8px 0}.map-link:hover{text-decoration:underline}
+    .map-box{position:sticky;top:18px;overflow:hidden;background:#fff;border-radius:16px;border:1px solid var(--border);box-shadow:0 6px 22px rgba(25,50,88,.045)}
+    .map-head{padding:17px 18px 13px}.map-head h3{margin:0 0 6px;font-size:16px}.map-head p{font-size:13px;color:var(--muted);margin:0;overflow-wrap:anywhere;line-height:1.5}
+    .map-frame{width:100%;min-height:365px;border:0;display:block;background:#e9eef2}
+    .map-foot{padding:12px 17px;display:flex;justify-content:space-between;align-items:center;gap:15px;font-size:12px;color:var(--muted)}
+    .footer{font-size:12px;color:#66788b;text-align:center;border-top:1px solid #dce5ef;padding:22px 10px 35px;margin-top:30px}
+    .foot-link{color:#366483;text-underline-offset:3px}
+    .icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+    .diagnostics{font-size:12px;color:#62768b;line-height:1.6;margin:10px 0 0;display:flex;flex-wrap:wrap;gap:6px 15px}
+    .diagnostics strong{color:#153859}
+    .advanced{margin-top:12px;font-size:12px;color:#60758b;border-top:1px dashed #e0e7ef;padding-top:10px}
+    .advanced summary{cursor:pointer;font-weight:650;user-select:none}
+    .advanced-grid{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:11px}
+    .advanced-grid label{font-size:12px;margin-bottom:4px}
+    .advanced-grid input{min-width:160px;max-width:260px;width:100%;border:1px solid #ccd8e5;border-radius:7px;padding:8px;font-size:13px}
+    .advanced-grid button{background:#16395d;color:#fff;border:0;border-radius:8px;padding:9px 13px;font-weight:750}
+    .advanced-grid p{margin:0;font-size:12px;flex-basis:100%;color:#64778b}
+    .picker-menu{position:absolute;left:0;right:0;top:calc(100% + 3px);background:#fff;border:1px solid #b9ccdf;box-shadow:0 12px 24px rgba(24,50,77,.13);border-radius:10px;max-height:250px;overflow:auto;z-index:20;display:none;padding:4px}
+    .picker-menu.open{display:block}.picker-item{display:block;width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;border-radius:7px;background:#fff;color:#213b56;font-size:13px;padding:9px 10px;line-height:1.35}
+    .picker-item:hover,.picker-item:focus-visible{background:#e9f2fc;outline:0}.picker-empty{padding:10px;color:#7a8996;font-size:12px}
+    .row-school{font-size:12px;color:#526c83;background:#edf3f9;padding:8px 11px;border-radius:7px;margin-bottom:15px}
+    @media(max-width:790px){.result-layout{grid-template-columns:1fr}.map-box{position:static}.map-frame{min-height:320px}}
+    @media(max-width:600px){.shell{width:min(100% - 26px,1080px)}.mast{padding:17px 0 23px}.brand{font-size:12px}.edition{font-size:11px;padding:6px 10px}h1{margin-bottom:11px}.lead{margin-bottom:33px}.search-panel{padding:20px 17px;border-radius:16px}.panel-top{align-items:center}.panel-top h2{font-size:18px}.reload span{display:none}.search-grid{grid-template-columns:1fr;gap:14px}.results-top h2{font-size:21px}.details{grid-template-columns:1fr 1fr}.card{padding:17px}.area-tag{max-width:125px}.map-frame{min-height:280px}.footer{font-size:11px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+  
+    .search-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .search-grid>div{min-width:0}
+    .result-layout{grid-template-columns:minmax(0,1fr) minmax(320px,1fr)}
+    .results-top{align-items:center}
+    .pill{display:inline-flex;padding:6px 11px;border-radius:30px;background:#eaf4eb;color:#21633e;font-size:12px;font-weight:750}
+    .area-tag{max-width:none}
+    .choose-map{display:none}
+    .row-school{margin:0 0 14px}
+    .card-head{margin-bottom:12px}
+    .card{padding:25px}
+    .detail-value{font-size:17px}
+    .details{margin-top:16px}
+    .field[disabled]{background:#f5f7fa;color:#68788c;cursor:not-allowed}
+    .alert{background:#fff4e5;color:#86510c;border:1px solid #f2d7aa;border-radius:12px;padding:15px 17px;font-size:14px;line-height:1.65;text-align:left}
+    .map-missing{padding:42px 22px;text-align:center;color:var(--muted)}
+    #conflict{display:none;margin-top:24px}#conflict.show{display:block}
+    #conflict h2{font-size:18px;margin:0 0 6px;color:#74410a}#conflict p{margin:0}
+    .map-foot a{word-break:normal}
+    .map-head strong{font-size:13px}
+    @media(max-width:890px){.search-grid{grid-template-columns:1fr 1fr}.search-grid>div:last-child{grid-column:1/-1}.result-layout{grid-template-columns:1fr}.map-box{position:static}}
+    @media(max-width:550px){.search-grid{grid-template-columns:1fr}.search-grid>div:last-child{grid-column:auto}.panel-top{align-items:center}.panel-top h2{font-size:19px}.map-frame{min-height:320px}.search-panel{padding:18px}.result-count{font-size:11px}}
+
+    /* Orientador de materias, independiente de Google Sheets */
+    .subject-panel{margin:0 0 12px;background:#fff;border:1px solid #d8e5f1;border-radius:14px;padding:12px 17px;box-shadow:0 9px 26px rgba(22,48,81,.055)}
+    .subject-panel h2{font-size:15px;letter-spacing:-.025em;margin:0 0 5px}
+    .subject-panel .subtitle{margin-bottom:13px}
+    .subject-panel summary{font-size:14px;font-weight:750;color:#1a557d;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:15px}
+    .subject-panel summary::-webkit-details-marker{display:none}
+    .subject-panel summary:after{content:'+';font-weight:800;font-size:24px;color:#2b688c}
+    .subject-panel details[open] summary:after{content:'−'}
+    .subject-inner{border-top:1px solid #e9eff6;margin-top:10px;padding-top:12px}
+    .subject-choose{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
+    .subject-choose select,.subject-choose input{width:100%;min-height:40px;border:1px solid #cbd7e5;border-radius:11px;padding:10px 14px;background:#fff;font:inherit;color:var(--navy)}
+    .subject-choose select:focus-visible,.subject-choose input:focus-visible{outline:3px solid rgba(37,110,177,.18);border-color:#256eb1}
+    .subject-action{background:#153b62;border:0;border-radius:10px;color:#fff;min-height:48px;padding:11px 15px;font-weight:750}
+    .subject-action:disabled{background:#d7e0e9;color:#697a8b;cursor:not-allowed}
+    .subject-answer{display:none;background:#eaf4f8;border:1px solid #b7d7e8;border-radius:11px;padding:13px 15px;margin-top:14px;font-size:14px}
+    .subject-answer.show{display:block}.subject-answer strong{color:#123b5e}
+    @media(max-width:600px){.subject-panel{padding:18px}.subject-choose{grid-template-columns:1fr}.subject-action{width:100%}}
+.encounters{margin-top:17px;padding:16px;background:#eef5fc;border:1px solid #d8e7f5;border-radius:12px}.encounters h4{font-size:14px;margin:0 0 9px;color:#173e64}.encounter-list{margin:0;padding-left:23px;display:grid;gap:6px;font-size:13px;font-weight:650;color:#234763}.encounters p{margin:0;font-size:13px;color:#685523}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="shell">
+  <div class="mast"><div class="brand"><div class="brand-mark">EM</div><div>ESCUELA DE MAESTROS</div></div><span class="edition">Convocatoria 2027</span></div>
+  <p class="eyebrow">Consulta de comisiones</p>
+  <h1>Encontr&aacute; tu comisi&oacute;n, d&iacute;a y sede</h1>
+  <p class="lead">Indic&aacute; la escuela donde trabaj&aacute;s, el &aacute;rea en la que te desempe&ntilde;&aacute;s y el turno en el que ten&eacute;s tu cargo. Te mostramos solo la comisi&oacute;n, el d&iacute;a, el horario y la sede que te corresponden.</p>
+ </div>
+</header>
+<main class="shell">
+
+ <section class="subject-panel" aria-label="Averiguá a qué área pertenece tu materia">
+  <details id="subject-guide"><summary>¿No sabés qué área te corresponde? Consultalo acá</summary>
+   <div class="subject-inner">
+    <p class="subtitle">Elegí la materia que enseñás para saber qué área seleccionar en la consulta de comisiones.</p>
+    <div class="subject-choose">
+     <div><label for="subject">Materia que enseño</label><input id="subject" type="search" list="subject-list" autocomplete="off" placeholder="Escribí tu materia…" aria-label="Buscar materia"><datalist id="subject-list"></datalist></div><div><label for="subject-year">Año en que la dicto</label><select id="subject-year" disabled><option value="">Elegí el año</option></select></div><div id="subject-orientation-wrap" hidden><label for="subject-orientation">Orientación del bachillerato</label><select id="subject-orientation"><option value="">Elegí la orientación</option></select></div>
+    </div>
+    <div id="subject-answer" class="subject-answer" aria-live="polite"></div>
+    <p id="subject-help" class="field-help">Escribí una materia, seleccioná el año y, si corresponde, la orientación.</p>
+   </div>
+  </details>
+ </section>
+ <section class="search-panel" aria-label="Filtros de consulta">
+  <div class="panel-top"><div><h2>Consult&aacute; tu asignaci&oacute;n</h2><p class="subtitle">Complet&aacute; los tres filtros en orden. Pod&eacute;s escribir para encontrar una opci&oacute;n.</p></div>
+   <button id="reload" class="reload" type="button" title="Actualizar desde Google Sheets">Actualizar ↻</button></div>
+  <div class="search-grid">
+   <div><label for="school">1. Escuela donde trabajo</label><div class="input-wrap">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></svg>
+    <input class="field" id="school" type="text" placeholder="Busc&aacute; tu escuela por nombre o n&uacute;mero" autocomplete="off" disabled role="combobox" aria-expanded="false" aria-controls="school-menu">
+    <div id="school-menu" class="picker-menu" role="listbox" aria-label="Escuelas"></div>
+    <button class="dropdown" type="button" data-picker="school" aria-label="Ver escuelas"><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+   </div><p class="field-help" id="school-help">Leyendo escuelas&hellip;</p></div>
+   <div><label for="area">2. &Aacute;rea en la que me desempe&ntilde;o</label><div class="input-wrap">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/></svg>
+    <input class="field" id="area" type="text" placeholder="Busc&aacute; tu &aacute;rea" autocomplete="off" disabled role="combobox" aria-expanded="false" aria-controls="area-menu">
+    <div id="area-menu" class="picker-menu" role="listbox" aria-label="&Aacute;reas"></div>
+    <button class="dropdown" type="button" data-picker="area" aria-label="Ver &aacute;reas"><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+   </div><p class="field-help" id="area-help">Primero eleg&iacute; una escuela.</p></div>
+   <div><label for="turno">3. Turno en el que tengo el cargo</label><div class="input-wrap">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <input class="field" id="turno" type="text" placeholder="Eleg&iacute; el turno de tu cargo" autocomplete="off" disabled role="combobox" aria-expanded="false" aria-controls="turno-menu">
+    <div id="turno-menu" class="picker-menu" role="listbox" aria-label="Turnos"></div>
+    <button class="dropdown" type="button" data-picker="turno" aria-label="Ver turnos"><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+   </div><p class="field-help" id="turno-help">Primero eleg&iacute; escuela y &aacute;rea.</p></div>
+  </div>
+  <div class="filter-bottom"><div class="live-status" aria-live="polite"><span id="status-dot" class="status-dot"></span><span id="status">Conectando con Google Sheets&hellip;</span></div>
+   <button class="clear" id="clear" type="button">Limpiar filtros</button></div>
+
+</section>
+ <section id="message" class="message show" aria-live="polite"><div class="message-icon" aria-hidden="true"><svg class="icon" style="width:29px;height:29px" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg></div>
+  <h2 id="message-title">Leyendo Google Sheets&hellip;</h2><p id="message-text">Estamos cargando las asignaciones.</p></section>
+ <section id="conflict" class="alert" role="alert" aria-live="assertive"><h2>Hay una inconsistencia en la planilla</h2><p id="conflict-detail"></p></section>
+ <section id="results" class="results" aria-live="polite">
+  <div class="results-top"><div><h2>Tu comisi&oacute;n asignada</h2><p id="results-subtitle"></p></div><span class="pill">Asignaci&oacute;n encontrada</span></div>
+  <div class="result-layout"><div id="cards" class="cards"></div>
+   <aside class="map-box" aria-label="Mapa de la sede"><div class="map-head"><h3>Ubicaci&oacute;n de la sede</h3><p id="map-venue"></p></div>
+    <iframe title="Mapa de la sede de capacitaci&oacute;n" id="map" class="map-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+    <div class="map-foot"><span>Mapa de la sede indicada en la planilla.</span><a id="maps-external" class="map-link" target="_blank" rel="noopener noreferrer" href="#">C&oacute;mo llegar ↗</a></div>
+   </aside>
+  </div>
+ </section>
+ <footer class="footer">Fuente: <a class="foot-link" href="https://docs.google.com/spreadsheets/d/1x-cRhsulmABI8wyB87xKeZw4Kq1GIMb4XCEzfaYozww/edit" target="_blank" rel="noopener noreferrer">Convocatoria TDD 2027 en Google Sheets</a>. Los datos se vuelven a consultar al abrir el buscador, al regresar a la pesta&ntilde;a y cada cinco minutos mientras est&aacute; visible.</footer>
+</main>
+<script>
+"use strict";
+(() => {
+ const SHEET_ID = '1x-cRhsulmABI8wyB87xKeZw4Kq1GIMb4XCEzfaYozww';
+ const REFRESH_MS = 5 * 60 * 1000;
+ const PAGE_SIZE = 500;
+ const MAX_PAGES = 100;
+ const $ = id => document.getElementById(id);
+ const fields = {school:$('school'),area:$('area'),turno:$('turno')};
+ const state = {rows:[],loaded:false,refreshing:false,updated:null,sourceName:'',sourceGid:'',runId:0,invalidCount:0,duplicateCount:0,pageCount:0};
+ const clean = value => String(value ?? '').replace(/\s+/g,' ').trim();
+ const norm = value => clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-AR').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+ const ordered = (a,b) => a.localeCompare(b,'es',{sensitivity:'base',numeric:true});
+ const unique = values => [...new Map(values.filter(Boolean).map(v=>[norm(v),v])).values()].sort(ordered);
+ const equal = (a,b) => norm(a)===norm(b);
+ const fuzzy = (value,query) => !norm(query)||norm(value).includes(norm(query));
+ const getCell = cell => { if(!cell) return ''; return clean(cell.f !== undefined && cell.f !== null && cell.f !== '' ? cell.f : (cell.v ?? '')); };
+ const getRaw = cell => { if(!cell) return ''; return String(cell.f !== undefined && cell.f !== null && cell.f !== '' ? cell.f : (cell.v ?? '')); };
+ const getSource = key => {try{return localStorage.getItem(key)||'';}catch{return '';}};
+ const setSource = (key,value) => {try{localStorage.setItem(key,value);}catch{}};
+ state.sourceName=getSource('tdd2027_tab'); state.sourceGid=getSource('tdd2027_gid');
+ // La fuente queda configurada internamente; sin controles tecnicos visibles.
+
+ const MATERIAS_NES = [["Agro y ambiente","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Ambiente agrario","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Ambientes y Territorios","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Antropología Cultural","4°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Arte público y producción colectiva","5°","Arte - Artes Visuales","Orientada en Artes"],["Arte y ciencia (Arte y ciencias naturales / Literatura, cine y ciencia)","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Arte y sociedad","4°","Arte - Artes Visuales","Orientada en Artes"],["Arte y sociedad","4°","Arte - Música","Orientada en Artes"],["Arte y sociedad","4°","Arte - Teatro","Orientada en Artes"],["Arte, cultura y sociedad","5°","Arte - Artes Visuales","Orientada en Artes"],["Arte, cultura y sociedad","5°","Arte - Música","Orientada en Artes"],["Arte, cultura y sociedad","5°","Arte - Teatro","Orientada en Artes"],["Artes - Artes Visuales","1°","Todas","Artes"],["Artes - Artes Visuales","2°","Todas","Artes"],["Artes - Artes Visuales","4°","Todas","Artes"],["Artes - Música","1°","Todas","Artes"],["Artes - Música","2°","Todas","Artes"],["Artes - Música","4°","Todas","Artes"],["Artes - Teatro","1°","Todas","Artes"],["Artes - Teatro","2°","Todas","Artes"],["Artes - Teatro","4°","Todas","Artes"],["Artes en contextos históricos","4°","Arte - Artes Visuales","Orientada en Artes"],["Artes en contextos históricos","4°","Arte - Música","Orientada en Artes"],["Artes en contextos históricos","4°","Arte - Teatro","Orientada en Artes"],["Artes visuales y multimedia","5°","Arte - Artes Visuales","Orientada en Artes"],["Bases de Datos","4°","Informática","Tecnologias"],["Biología","1°","Todas","Ciencias Naturales"],["Biología","2°","Todas","Ciencias Naturales"],["Biología","3°","Todas","Ciencias Naturales"],["Comunicación, Cultura y Sociedad","5°","Comunicación","Orientacion Comunicación"],["Comunicación, Discursos Sociales y Medios","4°","Comunicación","Orientacion Comunicación"],["Contabilidad Patrimonial y de Gestión","5°","Economía y Administración","Orientacion Economia y Administración"],["Deportes abiertos","5°","Educación Física","Educación Física"],["Deportes abiertos y cerrados","3°","Educación Física","Educación Física"],["Deportes abiertos y cerrados I","3°","Educación Física","Educación Física"],["Deportes abiertos y cerrados II","4°","Educación Física","Educación Física"],["Deportes cerrados","5°","Educación Física","Educación Física"],["Derecho","5°","Economía y Administración","Orientacion Economia y Administración"],["Desarrollo de Aplicaciones Informáticas","5°","Informática","Tecnologias"],["Desarrollo de Proyectos de Producción","5°","Informática","Tecnologias"],["Ecología","4°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Ecología","4°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Ecología","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Economía","3°","Todas","Ciencias Sociales"],["Economía","4°","Economía y Administración","Orientacion Economia y Administración"],["Economía","5°","Economía y Administración","Orientacion Economia y Administración"],["Economía / Administración (eje a elección: Personal, Financiera, Comercial o Impositiva)","5°","Economía y Administración","Orientacion Economia y Administración"],["Economía orientada al agro","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Economía y producción agraria","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Educación Física","1°","Todas","Educación Física"],["Educación Física","2°","Todas","Educación Física"],["Educación Física","3°","Todas","Educación Física"],["Educación Física","4°","Todas","Educación Física"],["Educación Física","5°","Todas","Educación Física"],["Educación Tecnológica","1°","Todas","Tecnologías"],["Educación Tecnológica","2°","Todas","Tecnologías"],["Educación y Cultura","4°","Educación","Orientacion Educación"],["Educación y Cultura","5°","Educación","Orientacion Educación"],["Educación y Estado","4°","Educación","Orientacion Educación"],["Educación y Estado","5°","Educación","Orientacion Educación"],["Educación y Globalización","5°","Educación","Orientacion Educación"],["Educación y Psicología","4°","Educación","Orientacion Educación"],["Educación y Psicología","5°","Educación","Orientacion Educación"],["Educación y Sociedad","3°","Educación","Orientacion Educación"],["El agro en la Ciudad","4°","Agro y Ambiente","Orientacion Ciencias Naturales"],["El agro en la Ciudad","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Energía, radiación y vida","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Espacio de integración teórico-práctico","4°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Espacio de integración teórico-práctico","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Espacios agrarios","3°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Estructura del Universo","4°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Estructura y Funcionamiento de los Sistemas Informáticos I","4°","Informática","Tecnologias"],["Estructura y Funcionamiento de los Sistemas Informáticos I (cuatrimestral)","3°","Informática","Tecnologias"],["Estructura y Funcionamiento de los Sistemas Informáticos II","4°","Informática","Tecnologias"],["Estructura y Funcionamiento de los Sistemas Informáticos II","5°","Informática","Tecnologias"],["Filosofía","5°","Todas","Ciencias Sociales"],["Filosofía de la ciencia y la tecnología","4°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Formación Ética y Ciudadana","1°","Todas","Ciencias Sociales"],["Formación Ética y Ciudadana","2°","Todas","Ciencias Sociales"],["Formación Ética y Ciudadana","3°","Todas","Ciencias Sociales"],["Formación Ética y Ciudadana","4°","Todas","Ciencias Sociales"],["Física","4°","Todas","Ciencias Naturales"],["Físico-Química","3°","Todas","Ciencias Naturales"],["Geografía","1°","Todas","Ciencias Sociales"],["Geografía","2°","Todas","Ciencias Sociales"],["Geografía","3°","Todas","Ciencias Sociales"],["Geografía","4°","Todas","Ciencias Sociales"],["Geografía Ambiental y Política","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Gestión cultural musical","5°","Arte - Música","Orientada en Artes"],["Gestión de proyectos y producción musical","5°","Arte - Música","Orientada en Artes"],["Gimnasia y movimiento expresivo","4°","Educación Física","Educación Física"],["Gimnasia y movimiento expresivo I","4°","Educación Física","Educación Física"],["Gimnasia y movimiento expresivo II","5°","Educación Física","Educación Física"],["Historia","1°","Todas","Ciencias Sociales"],["Historia","2°","Todas","Ciencias Sociales"],["Historia","3°","Todas","Ciencias Sociales"],["Historia","4°","Todas","Ciencias Sociales"],["Historia (orientada)","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Historia (orientada)","5°","Arte - Artes Visuales","Orientada en Artes"],["Historia (orientada)","5°","Arte - Música","Orientada en Artes"],["Historia (orientada)","5°","Arte - Teatro","Orientada en Artes"],["Historia (orientada)","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Historia (orientada)","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Historia (orientada)","5°","Comunicación","Orientacion Comunicación"],["Historia (orientada)","5°","Economía y Administración","Orientacion Economia y Administración"],["Historia (orientada)","5°","Educación","Orientacion Educación"],["Historia (orientada)","5°","Educación Física","Educación Física"],["Historia (orientada)","5°","Informática","Tecnologias"],["Historia Cultural Latinoamericana","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Historia de la vida y de la Tierra","3°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Historia de las artes","5°","Arte - Artes Visuales","Orientada en Artes"],["Historia de las artes","5°","Arte - Música","Orientada en Artes"],["Historia de las artes","5°","Arte - Teatro","Orientada en Artes"],["Improvisación y ensambles musicales","5°","Arte - Música","Orientada en Artes"],["Introducción a la Comunicación","3°","Comunicación","Orientacion Comunicación"],["Introducción a las Ciencias Sociales y a las Humanidades","3°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Introducción al Estudio de la Comunicación","3°","Comunicación","Orientacion Comunicación"],["Lengua Adicional","1°","Todas","Lengua Adicional"],["Lengua Adicional","2°","Todas","Lengua Adicional"],["Lengua Adicional","3°","Todas","Lengua Adicional"],["Lengua Adicional","4°","Todas","Lengua Adicional"],["Lengua Adicional","5°","Todas","Lengua Adicional"],["Lengua y Literatura","1°","Todas","Lengua y Literatura"],["Lengua y Literatura","2°","Todas","Lengua y Literatura"],["Lengua y Literatura","3°","Todas","Lengua y Literatura"],["Lengua y Literatura","4°","Todas","Lengua y Literatura"],["Lengua y Literatura","5°","Todas","Lengua y Literatura"],["Lenguajes artísticos combinados","4°","Arte - Artes Visuales","Orientada en Artes"],["Lenguajes artísticos combinados","4°","Arte - Música","Orientada en Artes"],["Lenguajes artísticos combinados","4°","Arte - Teatro","Orientada en Artes"],["Lenguajes combinados","4°","Arte - Artes Visuales","Orientada en Artes"],["Lenguajes combinados","4°","Arte - Música","Orientada en Artes"],["Lenguajes combinados","4°","Arte - Teatro","Orientada en Artes"],["Lógica","4°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Matemática","1°","Todas","Matemática"],["Matemática","2°","Todas","Matemática"],["Matemática","3°","Todas","Matemática"],["Matemática","4°","Todas","Matemática"],["Matemática","5°","Todas","Matemática"],["Metodologías de Proyectos","5°","Informática","Tecnologias"],["Movimientos Culturales Latinoamericanos Contemporáneos / La CABA y su Historia (seminarios cuatrimestrales)","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Música y multimedia","5°","Arte - Música","Orientada en Artes"],["Organizaciones","3°","Economía y Administración","Orientacion Economia y Administración"],["Partículas, energía y cosmología","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Perspectivas Pedagógicas","4°","Educación","Orientacion Educación"],["Perspectivas Pedagógicas","5°","Educación","Orientacion Educación"],["Problemáticas científicas con impacto social","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Producciones agrarias","4°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Producción artística y gestión cultural","5°","Arte - Artes Visuales","Orientada en Artes"],["Producción en artes escénicas y gestión cultural","5°","Arte - Teatro","Orientada en Artes"],["Producción teatral y gestión cultural","5°","Arte - Teatro","Orientada en Artes"],["Producción visual y gestión cultural","5°","Arte - Artes Visuales","Orientada en Artes"],["Producción y análisis de la imagen","4°","Arte - Artes Visuales","Orientada en Artes"],["Producción y apreciación del teatro","4°","Arte - Teatro","Orientada en Artes"],["Producción y apreciación musical","4°","Arte - Música","Orientada en Artes"],["Proyecto","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Proyecto","5°","Educación","Orientacion Educación"],["Proyecto I","4°","Educación Física","Educación Física"],["Proyecto II","5°","Educación Física","Educación Física"],["Proyecto Organizacional","5°","Economía y Administración","Orientacion Economia y Administración"],["Proyecto de Comunicación","5°","Comunicación","Orientacion Comunicación"],["Proyectos de Producción","5°","Informática","Tecnologias"],["Prácticas de arte público","5°","Arte - Artes Visuales","Orientada en Artes"],["Psicología","4°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Química","5°","Todas","Ciencias Naturales"],["Química, alimentación y salud","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Radiación y vida","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Recreación y prácticas ludomotrices","4°","Educación Física","Educación Física"],["Recreación y prácticas ludomotrices","5°","Educación Física","Educación Física"],["Seminario de Comunicación, Tecnología y Sociedad","5°","Comunicación","Orientacion Comunicación"],["Seminario de Informática y Telecomunicaciones (TIC) (optativo; elegir al menos uno de los dos seminarios)","5°","Informática","Tecnologias"],["Seminario: Las TIC en la Producción de Bienes y Servicios (optativo)","5°","Informática","Tecnologias"],["Sistemas Administrativos","4°","Economía y Administración","Orientacion Economia y Administración"],["Sistemas de Información Contable","4°","Economía y Administración","Orientacion Economia y Administración"],["Sociedad y Estado","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Sociología","4°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Sociología rural","4°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Sujeto de la Educación","4°","Educación","Orientacion Educación"],["Taller anual de Producción Gráfica","5°","Comunicación","Orientacion Comunicación"],["Taller anual de Producción en Lenguajes","4°","Comunicación","Orientacion Comunicación"],["Taller anual de Producción en Lenguajes","5°","Comunicación","Orientacion Comunicación"],["Taller cuatrimestral de Producción en Lenguajes Multimediales","4°","Comunicación","Orientacion Comunicación"],["Taller cuatrimestral de Producción en Lenguajes Multimediales","5°","Comunicación","Orientacion Comunicación"],["Taller de Programación","4°","Informática","Tecnologias"],["Taller de artes visuales","3°","Arte - Artes Visuales","Orientada en Artes"],["Taller de artes visuales","4°","Arte - Artes Visuales","Orientada en Artes"],["Taller de música","3°","Arte - Música","Orientada en Artes"],["Taller de música","4°","Arte - Música","Orientada en Artes"],["Taller de teatro","3°","Arte - Teatro","Orientada en Artes"],["Taller de teatro","4°","Arte - Teatro","Orientada en Artes"],["Teatro y creación colectiva","5°","Arte - Teatro","Orientada en Artes"],["Teatro y multimedia","5°","Arte - Teatro","Orientada en Artes"],["Teatro y puesta en escena","5°","Arte - Teatro","Orientada en Artes"],["Tecnologías de la Información","3°","Todas","Tecnologías"],["Tecnologías de la Información","4°","Todas","Tecnologías"],["Tecnologías de la Información (orientada)","5°","Agro y Ambiente","Orientacion Ciencias Naturales"],["Tecnologías de la Información (orientada)","5°","Arte - Artes Visuales","Orientada en Artes"],["Tecnologías de la Información (orientada)","5°","Arte - Música","Orientada en Artes"],["Tecnologías de la Información (orientada)","5°","Arte - Teatro","Orientada en Artes"],["Tecnologías de la Información (orientada)","5°","Ciencias Naturales","Orientacion Ciencias Naturales"],["Tecnologías de la Información (orientada)","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Tecnologías de la Información (orientada)","5°","Comunicación","Orientacion Comunicación"],["Tecnologías de la Información (orientada)","5°","Economía y Administración","Orientacion Economia y Administración"],["Tecnologías de la Información (orientada)","5°","Educación","Orientacion Educación"],["Tecnologías de la Información (orientada)","5°","Educación Física","Educación Física"],["Tecnologías de la Información (orientada)","5°","Informática","Tecnologias"],["Teoría Social y Política","5°","Ciencias Sociales y Humanidades","Orientacion Ciencias Sociales y Humanidades"],["Teorías de la Comunicación","4°","Comunicación","Orientacion Comunicación"],["Tratamiento de Imágenes por Medios Informáticos","3°","Informática","Tecnologias"],["Tratamiento de Imágenes por Medios Informáticos (cuatrimestral)","3°","Informática","Tecnologias"]];
+ const materia=$('subject'), anio=$('subject-year'), orientacion=$('subject-orientation'), orientWrap=$('subject-orientation-wrap'), respuesta=$('subject-answer'), aplicar=$('subject-use');
+ function vals(xs){return [...new Set(xs)].sort(ordered);}
+ function fillSel(sel,values,placeholder){const old=sel.value;sel.replaceChildren(new Option(placeholder,''));values.forEach(v=>sel.add(new Option(v,v)));sel.value=values.includes(old)?old:'';sel.disabled=!values.length;}
+ function matchSubject(){return MATERIAS_NES.filter(r=>equal(r[0],materia.value) && r[1]===anio.value);}
+ function refreshSubject(){
+  const rows=matchSubject();
+  const special=['Historia (orientada)','Tecnologías de la Información (orientada)'].some(x=>equal(x,materia.value));
+  const choices=vals(rows.map(r=>r[2]).filter(x=>x!=='Todas'));
+  orientWrap.hidden=!(special && rows.length);
+  if(special && rows.length)fillSel(orientacion,choices,'Elegí la orientación');
+  const selected=special?rows.filter(r=>r[2]===orientacion.value):rows;
+  const areas=vals(selected.map(r=>r[3]));
+  const area=areas.length===1?areas[0]:'';
+  respuesta.classList.toggle('show',!!area || (!special && areas.length>1));
+  respuesta.replaceChildren();
+  if(area)respuesta.append('Área correspondiente: ',Object.assign(document.createElement('strong'),{textContent:area}));
+  else if(!special && areas.length>1)respuesta.append('Esta materia tiene varias áreas posibles: ',Object.assign(document.createElement('strong'),{textContent:areas.join(' / ')}),'. Verificá la especialidad.');
+  if(area){
+   const school=valid('school');
+   if(school){
+    const option=optionsBase('area').find(x=>equal(x,area));
+    if(option && fields.area.value!==option){fields.area.value=option;fields.turno.value='';manageControls();render();}
+    $('subject-help').textContent=option?'Área seleccionada automáticamente. Elegí el turno.':'Área identificada: '+area+'. No coincide con las áreas disponibles para esa escuela.';
+   } else $('subject-help').textContent='Área identificada: '+area+'. Elegí tu escuela para continuar.';
+  } else if(special && rows.length) $('subject-help').textContent='Seleccioná la orientación de 5.º año para identificar el área.';
+  else if(areas.length>1) $('subject-help').textContent='Hay más de una equivalencia en el Excel; no se asignará un área incorrecta.';
+  else $('subject-help').textContent='Escribí la materia y elegí el año para identificar el área.';
+ }
+
+ vals(MATERIAS_NES.map(r=>r[0])).forEach(v=>$('subject-list').append(new Option(v,v)));
+ materia.addEventListener('input',()=>{fillSel(anio,vals(MATERIAS_NES.filter(r=>equal(r[0],materia.value)).map(r=>r[1])),'Elegí el año');orientacion.value='';refreshSubject();});
+ anio.addEventListener('change',()=>{orientacion.value='';refreshSubject();});
+ orientacion.addEventListener('change',refreshSubject);
+ $('subject-help').textContent='Equivalencias integradas en el HTML a partir del Excel institucional; la asignación se consulta en Google Sheets.';
+ function status(msg,type='loading') { $('status').textContent=msg; $('status-dot').className='status-dot'+(type==='ok'?' ok':type==='bad'?' bad':''); }
+ function message(title,detail) { $('results').classList.remove('show'); $('conflict').classList.remove('show'); $('message-title').textContent=title; $('message-text').textContent=detail; $('message').classList.add('show'); }
+ function fullSchool(row,school) {return row.schools.some(x=>equal(x,school));}
+ function areaRows(school) {return state.rows.filter(r=>fullSchool(r,school));}
+ function turnRows(school,area) {return areaRows(school).filter(r=>equal(r.area,area));}
+ function options(which) {
+  if(which==='school')return unique(state.rows.flatMap(r=>r.schools));
+  const school = valid('school');if(!school)return [];
+  if(which==='area')return unique(areaRows(school).map(r=>r.area));
+  const area=valid('area');if(!area)return [];
+  return unique(turnRows(school,area).map(r=>r.turno));
+ }
+ function valid(which) {const entered=fields[which].value; return optionsBase(which).find(x=>equal(x,entered))||'';}
+ function optionsBase(which){
+  if(which==='school')return unique(state.rows.flatMap(r=>r.schools));
+  const s=optionsBase('school').find(x=>equal(x,fields.school.value));
+  if(!s)return [];
+  if(which==='area')return unique(areaRows(s).map(r=>r.area));
+  const a=unique(areaRows(s).map(r=>r.area)).find(x=>equal(x,fields.area.value));
+  return a ? unique(turnRows(s,a).map(r=>r.turno)) : [];
+ }
+ function closePickers(){for(const which of Object.keys(fields)) {$(which+'-menu').classList.remove('open');fields[which].setAttribute('aria-expanded','false');}}
+ function showPicker(which,force=false){
+  const input=fields[which];if(input.disabled)return;
+  closePickers();const menu=$(which+'-menu');const possible=options(which).filter(x=>fuzzy(x,input.value));
+  menu.replaceChildren();
+  if(!possible.length){const item=document.createElement('div');item.className='picker-empty';item.textContent='No hay opciones que coincidan.';menu.append(item);}
+  for(const value of possible.slice(0,150)){
+   const button=document.createElement('button');button.type='button';button.className='picker-item';button.setAttribute('role','option');button.textContent=value;
+   button.addEventListener('mousedown',ev=>ev.preventDefault());
+   button.addEventListener('click',()=>{input.value=value;afterSelect(which);closePickers();input.focus();});menu.append(button);
+  }
+  if(possible.length>150){const more=document.createElement('div');more.className='picker-empty';more.textContent='Hay '+(possible.length-150)+' opciones m\u00e1s. Escrib\u00ed para filtrar.';menu.append(more);}
+  menu.classList.toggle('open',force||!!input.value);input.setAttribute('aria-expanded',String(menu.classList.contains('open')));
+ }
+ function manageControls(){
+  const s=valid('school'),a=valid('area');fields.area.disabled=!s;fields.turno.disabled=!s||!a;
+  const schools=optionsBase('school'),areas=optionsBase('area'),turnos=optionsBase('turno');
+  $('school-help').textContent=schools.length+' escuelas en la base.';
+  $('area-help').textContent=s ? areas.length+' \u00e1reas disponibles para esta escuela.' : 'Primero eleg\u00ed una escuela de la lista.';
+  $('turno-help').textContent=s&&a ? turnos.length+' turnos disponibles para esta combinaci\u00f3n.' : 'Primero eleg\u00ed escuela y \u00e1rea.';
+ }
+ function afterSelect(which){
+  if(which==='school'){fields.area.value='';fields.turno.value='';refreshSubject();}
+  if(which==='area'){fields.turno.value='';}
+  manageControls();render();
+ }
+ function normalizeColumns(cols,rows){
+  const keys=['comision','escuelas','area','turno','dia','horario','sede'];
+  const labels=cols.map(c=>norm(c.label||c.id||''));
+  const matched=keys.map(key=>labels.findIndex(name=>name===key||(key==='escuelas'&&name==='escuela')));
+  if(matched.every(x=>x>=0))return {indices:matched,skipFirst:false};
+  if(rows.length){const first=(rows[0].c||[]).map(c=>norm(getCell(c)));
+   const fromRows=keys.map(key=>first.findIndex(name=>name===key||(key==='escuelas'&&name==='escuela')));
+   if(fromRows.every(x=>x>=0))return {indices:fromRows,skipFirst:true};
+  }
+  const missing=keys.filter((_,i)=>matched[i]<0);
+  const live=labels.filter(Boolean).join(' | ')||'(sin etiquetas detectadas)';
+  throw new Error('Faltan columnas: '+missing.join(', ')+'. Se requieren 7 encabezados: Comisi\u00f3n, Escuelas, AREA, TURNO, Dia, Horario y SEDE. Columnas detectadas: '+live+'.');
+ }
+ let currentColumns=null;
+ function parsePage(payload,offset){
+  if(payload?.status==='error')throw new Error((payload.errors||[]).map(e=>e.detailed_message||e.message).join(' / ')||'Error de Google Sheets');
+  const table=payload?.table;
+  if(!table||!Array.isArray(table.rows))throw new Error('Google Sheets devolvi\u00f3 una respuesta sin filas.');
+  if(offset===0)currentColumns=normalizeColumns(table.cols||[],table.rows);
+  const mapping=currentColumns.indices;
+  return table.rows.slice(offset===0&&currentColumns.skipFirst?1:0).map((r,index)=>{
+   const cells=r.c||[];
+   const get=i=>getCell(cells[mapping[i]]);
+   const rawSchools=getRaw(cells[mapping[1]]);
+   const schools=rawSchools.split(/\r?\n|\s*;\s*/g).map(clean).filter(Boolean);
+   return {commission:get(0),school:get(1),schools:schools.length?schools:[get(1)].filter(Boolean),area:get(2),turno:get(3),day:get(4),hours:get(5),venue:get(6),rowNumber:offset+index+2};
+  });
+ }
+ function requestPage(offset,token){return new Promise((resolve,reject)=>{
+  const callback='__tdd2027_'+token+'_'+offset+'_'+Math.random().toString(36).slice(2);
+  const tag=document.createElement('script');let done=false;
+  const timer=setTimeout(()=>finish(new Error('Se agot\u00f3 el tiempo para leer el bloque '+(offset/PAGE_SIZE+1)+'.')),25000);
+  function finish(error,payload){if(done)return;done=true;clearTimeout(timer);try{delete window[callback];}catch{}tag.remove();error?reject(error):resolve(payload);}
+  window[callback]=payload=>finish(null,payload);
+  tag.onerror=()=>finish(new Error('No se pudo conectar con Google Sheets. Revis\u00e1 los permisos de acceso.'));
+  const params=new URLSearchParams({headers:'1',range:'A:G',tq:'select A,B,C,D,E,F,G limit '+PAGE_SIZE+' offset '+offset,tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
+  if(state.sourceGid)params.set('gid',state.sourceGid);
+  else if(state.sourceName)params.set('sheet',state.sourceName);
+  tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+params.toString();
+  document.head.append(tag);
+ });}
+ async function load(){
+  if(state.refreshing)return;
+  state.refreshing=true;$('reload').disabled=true;const token=++state.runId;
+  if(!state.loaded)message('Cargando la base','Consultando las 7 columnas de Google Sheets, incluida TURNO.');
+  status('Actualizando datos de Google Sheets...');
+  let all=[],pages=0,lastSignature='';currentColumns=null;
+  try{
+   for(let p=0;p<MAX_PAGES;p++){
+    status('Leyendo bloque '+(p+1)+' de la base...');
+    const batch=parsePage(await requestPage(p*PAGE_SIZE,token),p*PAGE_SIZE); pages++;
+    const signature=batch.length ? batch[0].school+'|'+batch[0].commission+'|'+batch[batch.length-1].school+'|'+batch[batch.length-1].commission : '';
+    if(signature&&signature===lastSignature)throw new Error('Google Sheets devolvi\u00f3 el mismo bloque m\u00e1s de una vez. Se cancel\u00f3 para evitar datos incompletos.');
+    lastSignature=signature;all.push(...batch);
+    if(batch.length<PAGE_SIZE)break;
+    if(p===MAX_PAGES-1)throw new Error('La planilla excede '+(MAX_PAGES*PAGE_SIZE)+' filas.');
+   }
+   const validRows=all.filter(r=>r.schools.length&&r.area&&r.turno&&(r.commission||r.day||r.hours||r.venue));
+   if(!validRows.length)throw new Error('La pesta\u00f1a no contiene asignaciones completas con escuela, \u00e1rea y turno.');
+   const seen=new Set(),deduped=[];let duplicates=0;
+   for(const r of validRows){const fingerprint=[r.school,r.area,r.turno,r.commission,r.day,r.hours,r.venue].map(norm).join('|');
+    if(seen.has(fingerprint)){duplicates++;continue;}seen.add(fingerprint);deduped.push(r);
+   }
+   const previous={school:fields.school.value,area:fields.area.value,turno:fields.turno.value};
+   state.rows=deduped;state.loaded=true;state.updated=Date.now();state.invalidCount=all.length-validRows.length;state.duplicateCount=duplicates;state.pageCount=pages;
+   for(const which of Object.keys(fields))fields[which].value=previous[which];
+   if(!valid('school')){fields.school.value='';fields.area.value='';fields.turno.value='';}
+   else if(!valid('area')){fields.area.value='';fields.turno.value='';}
+   else if(!valid('turno'))fields.turno.value='';
+   fields.school.disabled=false;manageControls();
+   status('Información actualizada','ok');
+   render();
+  }catch(e){
+   status('No se pudo '+(state.loaded?'actualizar':'cargar')+' la base','bad');
+   console.error('Error de lectura de Google Sheets:',e);
+   if(!state.loaded){fields.school.disabled=true;fields.area.disabled=true;fields.turno.disabled=true;message('No se pudo cargar la información','Intentá actualizar la página. Si el problema continúa, avisá a la organización.');}
+   else {render();console.warn('Se mantienen los últimos datos cargados.');}
+  }finally{state.refreshing=false;$('reload').disabled=false;}
+ }
+ function newElement(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
+ function field(label,value,full=false){const div=newElement('div','detail'+(full?' full':''));div.append(newElement('span','detail-name',label),newElement('div','detail-value',value||'No informado'));return div;}
+ function mapQuery(venue){return /(?:buenos aires|\bcaba\b|argentina)/i.test(venue)?venue:venue+', Ciudad Aut\u00f3noma de Buenos Aires, Argentina';}
+ function encounterDates(day){
+  const key=String(day||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const days=['lunes','martes','miercoles','jueves','viernes'];
+  const index=days.findIndex(d=>key.includes(d));
+  if(index<0)return null;
+  const starts=[new Date(2026,10,2),new Date(2026,10,16),new Date(2026,10,30),new Date(2026,11,14)];
+  return starts.map(d=>{d.setDate(d.getDate()+index);return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});});
+ }
+ function displayResult(row,s,a,t){
+  $('message').classList.remove('show');$('conflict').classList.remove('show');$('results').classList.add('show');
+  $('results-subtitle').textContent=s+' \u00b7 '+a+' \u00b7 '+t;
+  const card=newElement('article','card');
+  const head=newElement('div','card-head');const title=newElement('div');title.append(newElement('p','tiny','COMISI\u00d3N'),newElement('h3','commission',row.commission||'No informada'));
+  head.append(title,newElement('span','area-tag',row.area));card.append(head);
+  card.append(newElement('div','row-school','Escuela: '+s+' | Turno: '+t));
+  const details=newElement('div','details');details.append(field('D\u00eda',row.day),field('Horario',row.hours));
+  const loc=field('Sede asignada',row.venue,true);loc.classList.add('venue');details.append(loc);card.append(details);
+  const dates=encounterDates(row.day);
+  const calendar=newElement('section','encounters');
+  calendar.append(newElement('h4','','Tus cuatro encuentros · 2026'));
+  if(dates){const list=newElement('ol','encounter-list');dates.forEach(date=>list.append(newElement('li','',date)));calendar.append(list);}
+  else calendar.append(newElement('p','','No se pudo identificar un día de lunes a viernes en la columna Dia. Revisá el dato de Google Sheets.'));
+  card.append(calendar);
+  const actions=newElement('div','card-actions');
+  if(row.venue){const url='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery(row.venue));const link=newElement('a','map-link','Abrir Google Maps \u2197');link.href=url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);}
+  card.append(actions);$('cards').replaceChildren(card);
+  const venue=row.venue||'Sede no informada';$('map-venue').textContent=venue;
+  if(row.venue){
+   const query=encodeURIComponent(mapQuery(row.venue));$('map').style.display='block';$('map').src='https://maps.google.com/maps?q='+query+'&z=15&output=embed';
+   $('maps-external').style.display='inline-flex';$('maps-external').href='https://www.google.com/maps/search/?api=1&query='+query;
+  }else{$('map').removeAttribute('src');$('map').style.display='none';$('maps-external').style.display='none';}
+ }
+ function render(){
+  if(!state.loaded)return;manageControls();
+  const school=valid('school'),area=valid('area'),turno=valid('turno');
+  if(!school){message('¿En qu\u00e9 escuela trabaj\u00e1s?','Escrib\u00ed el nombre o n\u00famero y eleg\u00ed tu escuela exacta de la lista.');return;}
+  if(!area){message('¿En qu\u00e9 \u00e1rea te desempe\u00f1\u00e1s?','Eleg\u00ed el \u00e1rea en la que trabaj\u00e1s en '+school+'.');return;}
+  if(!turno){message('¿En qu\u00e9 turno ten\u00e9s tu cargo?','Eleg\u00ed el turno de tu cargo para consultar la comisi\u00f3n y la sede que te corresponden.');return;}
+  const found=state.rows.filter(r=>fullSchool(r,school)&&equal(r.area,area)&&equal(r.turno,turno));
+  if(!found.length){message('Sin asignaci\u00f3n para esta combinaci\u00f3n','La base no tiene una fila que coincida exactamente con escuela, \u00e1rea y turno.');return;}
+  if(found.length>1){
+   $('message').classList.remove('show');$('results').classList.remove('show');$('conflict').classList.add('show');
+   $('conflict-detail').textContent='La combinaci\u00f3n '+school+' / '+area+' / '+turno+' tiene '+found.length+' asignaciones diferentes en Google Sheets (filas '+found.map(r=>r.rowNumber).join(', ')+'). Para no indicarte una sede equivocada, no mostramos ninguna hasta que se corrija la planilla.';
+   return;
+  }
+  displayResult(found[0],school,area,turno);
+ }
+ for(const which of Object.keys(fields)){
+  const input=fields[which];
+  input.addEventListener('input',()=>{afterSelect(which);showPicker(which,true);});
+  input.addEventListener('focus',()=>{if(!input.disabled)showPicker(which,false);});
+  input.addEventListener('keydown',event=>{
+   if(event.key==='Escape')closePickers();
+   if(event.key==='ArrowDown'){event.preventDefault();showPicker(which,true);$(which+'-menu').querySelector('button')?.focus();}
+   if(event.key==='Enter'){const optionsAvailable=options(which);const candidate=optionsAvailable.find(x=>equal(x,input.value));
+    if(candidate){event.preventDefault();input.value=candidate;afterSelect(which);closePickers();}}
+  });
+ }
+ document.querySelectorAll('[data-picker]').forEach(button=>button.addEventListener('click',()=>{const which=button.dataset.picker;if(!fields[which].disabled){fields[which].focus();showPicker(which,true);}}));
+ document.addEventListener('click',event=>{if(!event.target.closest('.input-wrap'))closePickers();});
+ $('clear').addEventListener('click',()=>{fields.school.value='';fields.area.value='';fields.turno.value='';manageControls();closePickers();render();fields.school.focus();});
+ $('reload').addEventListener('click',load);
+ setInterval(()=>{if(document.visibilityState==='visible')load();},REFRESH_MS);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(!state.updated||Date.now()-state.updated>REFRESH_MS))load();});
+ load();
+})();
+</script>
+</body>
+</html>
