@@ -124,12 +124,24 @@
     .subject-answer.show{display:block}.subject-answer strong{color:#123b5e}
     @media(max-width:600px){.subject-panel{padding:18px}.subject-choose{grid-template-columns:1fr}.subject-action{width:100%}}
 .encounters{margin-top:17px;padding:16px;background:#eef5fc;border:1px solid #d8e7f5;border-radius:12px}.encounters h4{font-size:14px;margin:0 0 9px;color:#173e64}.encounter-list{margin:0;padding-left:23px;display:grid;gap:6px;font-size:13px;font-weight:650;color:#234763}.encounters p{margin:0;font-size:13px;color:#685523}
+
+/* Identidad institucional Escuela de Maestros · Matriz PCI */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap');
+:root{--deep:#0d3550;--i:#12395c;--blue:#2c5da6;--m:#5f7382;--l:#d8e1e8;--band:#edf3f8;--mint:#e7f8f5}
+body{font-family:Archivo,system-ui,-apple-system,'Segoe UI',sans-serif!important;color:#12395c}
+.em-site-top{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:84px;padding:14px clamp(18px,5vw,77px);background:#fff;border-bottom:1px solid #d8e1e8;position:relative;z-index:2}
+.em-site-top img{display:block;width:min(313px,60vw);height:auto;max-height:48px}
+.em-site-top .em-edition{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#12395c;background:#edf3f8;padding:10px 14px;border-radius:99px}
+.em-site-footer{margin-top:45px;display:flex;align-items:center;justify-content:space-between;gap:25px;min-height:197px;padding:35px clamp(20px,6vw,77px);background:#0d3550;color:#fff;border-radius:24px 24px 0 0}
+.em-site-footer .em-logo{height:52px;max-width:48%;width:auto;object-fit:contain}.em-site-footer .em-ministerio{height:39px;max-width:48%;width:auto;object-fit:contain}
+.card,.tile,.panel,.search-panel{border-radius:15px}
+@media(max-width:650px){.em-site-top{min-height:72px;padding:14px 18px;gap:9px}.em-site-top img{width:min(245px,62vw)}.em-site-top .em-edition{font-size:10px;padding:7px 9px}.em-site-footer{min-height:140px;flex-wrap:wrap;justify-content:center;padding:28px 18px;gap:25px}.em-site-footer .em-logo{height:42px;max-width:90%}.em-site-footer .em-ministerio{height:30px;max-width:90%}}
 </style>
 </head>
-<body>
+<body><div class="em-site-top"><a href="portal.html" aria-label="Ir al Portal TDD 2027"><img src="assets/em-logo-header.svg" alt="Escuela de Maestros"></a><span class="em-edition">TDD 2027</span></div>
 <header class="top">
  <div class="shell">
-  <div class="mast"><div class="brand"><div class="brand-mark">EM</div><div>ESCUELA DE MAESTROS</div></div><span class="edition">Convocatoria 2027</span></div>
+  <div class="mast"><span class="edition">Convocatoria 2027</span></div>
   <p class="eyebrow">Consulta de comisiones</p>
   <h1>Encontr&aacute; tu comisi&oacute;n, d&iacute;a y sede</h1>
   <p class="lead">Indic&aacute; la escuela donde trabaj&aacute;s, el &aacute;rea en la que te desempe&ntilde;&aacute;s y el turno en el que ten&eacute;s tu cargo. Te mostramos solo la comisi&oacute;n, el d&iacute;a, el horario y la sede que te corresponden.</p>
@@ -445,5 +457,5 @@
  load();
 })();
 </script>
-</body>
+<footer class="em-site-footer" aria-label="Identidad institucional"><img class="em-logo" src="assets/em-logo-footer.svg" alt="Escuela de Maestros"><img class="em-ministerio" src="assets/ministerio-footer.svg" alt="Ministerio de Educación · Buenos Aires Ciudad"></footer></body>
 </html>
