@@ -144,17 +144,17 @@ html{background:#f4f7fa}body{background:#f4f7fa!important;min-height:100vh;displ
 .em-backbar{display:flex;align-items:center;padding:12px clamp(18px,5vw,77px);background:#edf3f8;border-bottom:1px solid #d8e1e8}.em-backlink{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid #aebfce;border-radius:11px;background:#fff;color:#12395c!important;text-decoration:none;font:800 14px Archivo,system-ui,sans-serif;box-shadow:0 2px 6px #12395c10}.em-backlink:hover{background:#e7f8f5;border-color:#5c9eaa}.em-backlink:focus-visible{outline:3px solid #2c5da6;outline-offset:2px}
 </style>
 </head>
-<body><div class="em-site-top"><a href="portal.html" aria-label="Ir al Portal TDD 2027"><img src="assets/em-logo-header.svg" alt="Escuela de Maestros"></a><span class="em-edition">TDD 2027</span></div><nav class="em-backbar" aria-label="Volver al portal"><a class="em-backlink" href="portal.html">← Volver al portal</a></nav>
+<body><div class="em-site-top"><a href="portal.html" aria-label="Ir al Portal TDD 2027"><img src="assets/em-logo-header.svg" alt="Escuela de Maestros"></a><span class="em-edition">TDD 2027</span></div>
 <header class="top">
  <div class="shell">
   <div class="mast"><span class="edition">Convocatoria 2027</span></div>
   <p class="eyebrow">Consulta de comisiones</p>
   <h1>Encontr&aacute; tu comisi&oacute;n, d&iacute;a y sede</h1>
-  <p class="lead">Indic&aacute; la escuela donde trabaj&aacute;s, el &aacute;rea en la que te desempe&ntilde;&aacute;s y el turno en el que ten&eacute;s tu cargo. Te mostramos solo la comisi&oacute;n, el d&iacute;a, el horario y la sede que te corresponden.</p>
+  <p class="lead">Indic&aacute; la escuela donde trabaj&aacute;s, el &aacute;rea en la que te desempe&ntilde;&aacute;s y el turno donde ten&eacute;s mayor carga horaria. Te mostramos solo la comisi&oacute;n, el d&iacute;a, el horario y la sede que te corresponden.</p>
  </div>
 </header>
 <main class="shell">
- <nav aria-label="Navegación" style="padding:16px 0 6px"><a href="portal.html" style="display:inline-flex;align-items:center;gap:8px;background:#fff;color:#14395e;border:1px solid #cbd7e5;border-radius:10px;padding:10px 15px;text-decoration:none;font-weight:750;font-size:14px">← Volver al Portal TDD 2027</a></nav>
+ 
 
  <section class="subject-panel" aria-label="Averiguá a qué área pertenece tu materia">
   <details id="subject-guide"><summary>¿No sabés qué área te corresponde? Consultalo acá</summary>
@@ -184,9 +184,9 @@ html{background:#f4f7fa}body{background:#f4f7fa!important;min-height:100vh;displ
     <div id="area-menu" class="picker-menu" role="listbox" aria-label="&Aacute;reas"></div>
     <button class="dropdown" type="button" data-picker="area" aria-label="Ver &aacute;reas"><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
    </div><p class="field-help" id="area-help">Primero eleg&iacute; una escuela.</p></div>
-   <div><label for="turno">3. Turno en el que tengo el cargo</label><div class="input-wrap">
+   <div><label for="turno">3. Elegí el turno donde tenés mayor carga horaria</label><div class="input-wrap">
     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-    <input class="field" id="turno" type="text" placeholder="Eleg&iacute; el turno de tu cargo" autocomplete="off" disabled role="combobox" aria-expanded="false" aria-controls="turno-menu">
+    <input class="field" id="turno" type="text" placeholder="Elegí el turno donde tenés mayor carga horaria" autocomplete="off" disabled role="combobox" aria-expanded="false" aria-controls="turno-menu">
     <div id="turno-menu" class="picker-menu" role="listbox" aria-label="Turnos"></div>
     <button class="dropdown" type="button" data-picker="turno" aria-label="Ver turnos"><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
    </div><p class="field-help" id="turno-help">Primero eleg&iacute; escuela y &aacute;rea.</p></div>
