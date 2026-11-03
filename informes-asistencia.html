@@ -9,6 +9,8 @@ function plannedDay(date){
  const weekday=WEEKDAYS.find(d=>norm(d)===normal||normal.startsWith(norm(d)+' '));
  if(weekday)return weekday;
  let year,month,day,m;
+ if((m=raw.match(/^(\d{1,2})[\/\-.](\d{1,2})(?:\s|$)/))){day=+m[1];month=+m[2];year=2026}
+ else 
  if((m=raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})(?:\D|$)/))){day=+m[1];month=+m[2];year=+m[3]}
  else if((m=raw.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\D|$)/))){year=+m[1];month=+m[2];day=+m[3]}
  else if((m=raw.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/))){year=+m[1];month=+m[2]+1;day=+m[3]}
