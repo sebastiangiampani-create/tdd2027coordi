@@ -136,8 +136,8 @@ def main():
         plan=PLANNED.get(label)
         if not plan: continue
         group=[r for r in records if day(at(r,13))==d]
-        history.append((d,len(group),count(group),sum(plan)))
-    def history_card(d,registered,people,planned,active):
+        history.append((d,count(group),sum(plan)))
+    def history_card(d,people,planned,active):
         rate=100*people/planned if planned else 0
         bg="#d8e9ff" if active else "#edf4ff"
         border="#174e8a" if active else "#b8d1f2"
@@ -145,21 +145,21 @@ def main():
             f'<td width="33%" valign="top" style="padding:4px">'
             f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{bg};border:1px solid {border};border-radius:9px">'
             f'<tr><td align="center" style="padding:12px 4px 3px;font-size:12px;color:#12395c">{d.strftime("%d/%m")}</td></tr>'
-            f'<tr><td align="center" style="font-size:28px;font-weight:700;color:#092b56">{registered}</td></tr>'
-            '<tr><td align="center" style="font-size:11px;color:#526b80;padding:2px 4px 10px">registros</td></tr>'
+            f'<tr><td align="center" style="font-size:28px;font-weight:700;color:#092b56">{people}</td></tr>'
+            '<tr><td align="center" style="font-size:11px;color:#526b80;padding:2px 4px 10px">DNI únicos</td></tr>'
             f'<tr><td style="padding:10px 8px;border-top:1px solid #c8d9ed"><strong style="font-size:16px;color:#092b56">{percent(people,planned).replace(".",",")}</strong>'
             f'<div style="background:#c6d8ee;height:7px;border-radius:4px;margin:6px 0"><div style="background:#2677bd;height:7px;width:{min(100,rate):.1f}%;border-radius:4px"></div></div>'
             f'<div style="font-size:10px;color:#526b80">{people} únicos de {planned} previstos</div></td></tr></table></td>'
         )
     history_html='<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
-    for i,(d,registered,people,planned) in enumerate(history):
+    for i,(d,people,planned) in enumerate(history):
         if i and i%3==0: history_html+='</tr><tr>'
-        history_html+=history_card(d,registered,people,planned,d==target)
+        history_html+=history_card(d,people,planned,d==target)
     history_html+='</tr></table>'
     shifts=[]
     for i,name in enumerate(SHIFTS):
         rs=[r for r in today if norm(at(r,14))==norm(name)]
-        shifts.append([name,len(rs),count(rs),percent(count(rs),expected[i] if expected else 0)])
+        shifts.append([name,count(rs),percent(count(rs),expected[i] if expected else 0)])
     dependencies=[]
     for name in BASE:
         rs=[r for r in today if dep(at(r,5))==name]
@@ -206,16 +206,23 @@ def main():
       <div style="font-size:13px;color:#526b80">{weekday} {target.strftime('%d/%m/%Y')} · Actualizado {datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).strftime('%H:%M')} h</div>
     </td></tr>
     <tr><td style="padding:8px 15px 18px">
-      <h2 style="font-size:16px;margin:6px 5px 8px;color:#12395c">Asistencia del día</h2>
+      <h2 style="font-size:16px;margin:6px 5px 8px;color:#12395c">DNI únicos del día</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>{metric("Asistencias del día",len(today),"Registros de la jornada",True)}{metric("DNI únicos del día",count(today),"Docentes sin duplicar en la fecha",True)}</tr></table>
+      <tr><td style="padding:5px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#d8e9ff;border:2px solid #8bb4e0;border-radius:11px"><tr>
+          <td style="padding:18px 20px">
+            <div style="font-size:55px;line-height:1.05;font-weight:700;color:#092b56">{count(today)}</div>
+            <div style="font-size:17px;font-weight:700;color:#12395c;margin-top:8px">Docentes únicos que asistieron</div>
+            <div style="font-size:12px;color:#526b80;margin-top:5px">Cada DNI se cuenta una sola vez en la jornada</div>
+          </td></tr></table>
+      </td></tr></table>
       <h2 style="font-size:16px;margin:16px 5px 8px;color:#12395c">Acumulado y cobertura</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>{metric("DNI únicos acumulados",count(records),"Universo: 3.853 docentes")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr>
-      <tr>{metric("Cobertura de la jornada",percent(count(today),total_expected).replace(".",","),f"{count(today)} únicos de {total_expected} previstos")}{metric("Asistencia acumulada",percent(cumulative,cumulative_expected).replace(".",","),f"{cumulative} asistencias diarias únicas de {cumulative_expected} previstas")}</tr></table>
-      <div style="padding:7px 6px;font-size:11px;color:#526b80">Registros acumulados: <strong>{len(records)}</strong> · Los DNI únicos se cuentan una vez en el período indicado.</div>
+      <tr>{metric("DNI únicos acumulados",count(records),"Docentes distintos en todo el período")}{metric("Universo de docentes","3.853","Base de referencia")}</tr>
+      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} únicos de {total_expected} previstos")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr></table>
+      <div style="padding:9px 6px;font-size:12px;color:#526b80">Asistencia acumulada por jornada: <strong style="color:#092b56">{percent(cumulative,cumulative_expected).replace(".",",")}</strong> · Se suman DNI únicos de cada día; una persona puede asistir en días diferentes.</div>
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia del día por turno</h2>
-      {bar_table(["Turno","Registros","DNI únicos","Cobertura"],shifts,3)}
+      {bar_table(["Turno","DNI únicos","Cobertura"],shifts,2)}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Histórico de asistencia</h2>
       {history_html}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia por dependencia</h2>
