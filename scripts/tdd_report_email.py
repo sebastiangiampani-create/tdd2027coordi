@@ -109,7 +109,7 @@ def encrypted_workbook(rows, password):
     return data
 
 
-def visual_pdf(records, target):
+def visual_pdf(records, target, proposals):
     """Resumen imprimible sin datos nominales; todas las cifras son DNI unicos."""
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
     from reportlab.lib import colors
@@ -174,7 +174,29 @@ def visual_pdf(records, target):
         dep_rows.append([name,str(n),str(universe),percent(accumulated,universe)])
     story.append(grid(dep_rows))
     story.append(title("Asistencia por fecha y sede"))
-    story.append(Paragraph("Los datos de sede se obtienen de la planilla Propuestas. El detalle nominal permanece en el Excel cifrado.",styles["TDDSmall"]))
+    venues=defaultdict(set)
+    by_code=defaultdict(set)
+    by_pair={}
+    for p in proposals[1:]:
+        code=re.sub(r"[^a-z0-9]","",norm(at(p,0)))
+        commission=re.sub(r"[^a-z0-9]","",norm(at(p,1)))
+        venue=at(p,7)
+        if code and venue:
+            by_code[code].add(venue)
+            if commission:by_pair[(code,commission)]=venue
+    venue_rows=[["Fecha","Sede de capacitación","Asistentes"]]
+    for r in relevant:
+        d=day(at(r,13))
+        code=re.sub(r"[^a-z0-9]","",norm(at(r,10)))
+        commission=re.sub(r"[^a-z0-9]","",norm(at(r,11)))
+        matches=by_code.get(code,set())
+        venue=by_pair.get((code,commission)) or (next(iter(matches)) if len(matches)==1 else "Sede sin identificar")
+        identifier=at(r,1)
+        if identifier:venues[(date_label(d),venue)].add(identifier)
+    for (date,venue),identifiers in sorted(venues.items(),key=lambda x:(datetime.strptime(x[0][0],"%d/%m/%Y"),x[0][1])):
+        venue_rows.append([date,Paragraph(escape(venue),styles["TDDSmall"]),str(len(identifiers))])
+    story.append(grid(venue_rows,[25*mm,132*mm,25*mm]))
+    story.append(Paragraph("Los totales por sede corresponden a personas distintas dentro de cada agrupamiento. El detalle nominal permanece en el Excel cifrado.",styles["TDDSmall"]))
     story.append(Spacer(1,5*mm))
     story.append(Paragraph("Reporte de asistencia creado y diseñado por Sebastian Giampani",styles["TDDCenter"]))
     def footer(canvas,document):
@@ -326,7 +348,7 @@ def main():
         png=cairosvg.svg2png(bytestring=svg.read_bytes(),output_width=420)
         html_part.add_related(png,maintype="image",subtype="png",cid=f"<{cid}>",filename=svg.stem+".png")
 
-    pdf=visual_pdf(records,target)
+    pdf=visual_pdf(records,target,proposals)
     if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF visual invalido; envio cancelado.")
     message.add_attachment(pdf,maintype="application",subtype="pdf",filename=f"TDD2027_informe_visual_{target.isoformat()}.pdf")
     excel=encrypted_workbook(today,excel_password)
