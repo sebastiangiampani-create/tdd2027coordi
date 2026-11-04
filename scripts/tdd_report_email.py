@@ -110,78 +110,111 @@ def encrypted_workbook(rows, password):
 
 
 def visual_pdf(records, target, proposals):
-    """Resumen imprimible sin datos nominales; todas las cifras son DNI unicos."""
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER
+    """One-page visual attendance dashboard; all counts are distinct DNI."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.lib.utils import ImageReader
     from reportlab.lib.units import mm
+    from reportlab.lib.pagesizes import A4
     from collections import defaultdict
-
-    blue=colors.HexColor("#153e70")
-    light=colors.HexColor("#eaf2fb")
-    ink=colors.HexColor("#12395c")
-    styles=getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="TDDTitle",parent=styles["Title"],fontName="Helvetica-Bold",fontSize=16,leading=20,textColor=blue,spaceAfter=9))
-    styles.add(ParagraphStyle(name="TDDSection",parent=styles["Heading2"],fontSize=11,leading=14,textColor=blue,spaceBefore=13,spaceAfter=6))
-    styles.add(ParagraphStyle(name="TDDSmall",parent=styles["Normal"],fontSize=8,leading=12,textColor=ink))
-    styles.add(ParagraphStyle(name="TDDCenter",parent=styles["Normal"],fontSize=9,leading=13,alignment=TA_CENTER,textColor=ink))
-    out=BytesIO()
-    doc=SimpleDocTemplate(out,pagesize=(210*mm,297*mm),leftMargin=14*mm,rightMargin=14*mm,topMargin=13*mm,bottomMargin=15*mm)
-    width=182*mm
-    def grid(data,widths=None,header=True):
-        t=Table(data,colWidths=widths or [width/len(data[0])]*len(data[0]),repeatRows=1 if header else 0,hAlign="LEFT")
-        commands=[("VALIGN",(0,0),(-1,-1),"MIDDLE"),("BOTTOMPADDING",(0,0),(-1,-1),7),("TOPPADDING",(0,0),(-1,-1),7),("LINEBELOW",(0,0),(-1,-1),.35,colors.HexColor("#c8d9ed")),("TEXTCOLOR",(0,0),(-1,-1),ink),("FONTSIZE",(0,0),(-1,-1),8)]
-        if header:commands += [("BACKGROUND",(0,0),(-1,0),blue),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold")]
-        t.setStyle(TableStyle(commands))
-        return t
-    def ids(items):return count(items)
-    def title(txt):return Paragraph(txt,styles["TDDSection"])
-    def date_label(d):return d.strftime("%d/%m/%Y")
-    story=[]
-    logo_png=cairosvg.svg2png(url="assets/em-logo-header.svg",output_width=500)
-    logo=Image(BytesIO(logo_png),width=62*mm,height=8.4*mm)
-    story.extend([logo,Spacer(1,8*mm),Paragraph("C0890 · TDD 2027 · Informe general de asistencia",styles["TDDTitle"]),
-                  Paragraph("Talleres de Diseño · Fecha del informe: "+date_label(target),styles["TDDSmall"]),Spacer(1,5*mm)])
-    observed=sorted({day(at(r,13)) for r in records if day(at(r,13)) and day(at(r,13))<=target})
+    output=BytesIO()
+    cv=canvas.Canvas(output,pagesize=A4)
+    W,H=A4
+    navy=HexColor("#12395c")
+    blue=HexColor("#174e8a")
+    pale=HexColor("#eaf3ff")
+    light=HexColor("#f3f7fb")
+    muted=HexColor("#526b80")
+    def rect(x,y,w,h,fill,r=8,stroke=None):
+        cv.setFillColor(fill)
+        cv.setStrokeColor(stroke or fill)
+        cv.roundRect(x,y,w,h,r,stroke=1 if stroke else 0,fill=1)
+    def txt(x,y,s,size=10,bold=False,color=navy):
+        cv.setFillColor(color)
+        cv.setFont("Helvetica-Bold" if bold else "Helvetica",size)
+        cv.drawString(x,y,str(s))
+    def bar(x,y,w,value,maximum):
+        rect(x,y,w,7,HexColor("#c9dff3"),3)
+        if maximum and value:
+            rect(x,y,max(3,w*min(value/maximum,1)),7,HexColor("#2677bd"),3)
+    def num(items):return count(items)
     relevant=[r for r in records if day(at(r,13)) and day(at(r,13))<=target]
     today=[r for r in relevant if day(at(r,13))==target]
-    plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
-    total_plan=sum(plan)
-    stats=[["Asistencia del día","Asistencia acumulada","Cobertura del día","Cobertura del universo"],
-           [str(ids(today)),str(ids(relevant)),percent(ids(today),total_plan),percent(ids(relevant),3853)]]
-    story.append(grid(stats,header=True))
-    story.append(Paragraph("Universo de referencia: 3.853 docentes. La asistencia se calcula en base a DNI únicos.",styles["TDDSmall"]))
-    story.append(title("Asistencia por fecha"))
-    date_rows=[["Fecha","Asistentes","Previstos","Cobertura"]]
-    for d in observed:
+    dates=sorted({day(at(r,13)) for r in relevant})
+    weekday=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
+    plan=PLANNED.get(weekday[target.weekday()],[])
+    expected=sum(plan)
+    daily=num(today)
+    accumulated=num(relevant)
+    cv.setFillColor(white);cv.rect(0,0,W,H,fill=1,stroke=0)
+    rect(0,H-93,W,93,navy,0)
+    logo=ImageReader(BytesIO(cairosvg.svg2png(url="assets/em-logo-footer.svg",output_width=500)))
+    cv.drawImage(logo,40,H-64,width=132,height=45,mask="auto",preserveAspectRatio=True,anchor="c")
+    ministry=ImageReader(BytesIO(cairosvg.svg2png(url="assets/ministerio-footer.svg",output_width=650)))
+    cv.drawImage(ministry,W-245,H-59,width=204,height=34,mask="auto",preserveAspectRatio=True,anchor="c")
+    txt(40,H-122,"C0890  /  TDD 2027",11,True,blue)
+    txt(40,H-147,"INFORME DE ASISTENCIA",21,True,navy)
+    txt(40,H-167,"Talleres de Diseño  |  "+target.strftime("%d/%m/%Y"),10,False,muted)
+    # Hero
+    rect(40,H-298,W-80,113,pale,12,HexColor("#b8d1f2"))
+    txt(60,H-208,"ASISTENCIA DEL DIA",11,True,blue)
+    txt(59,H-268,str(daily),51,True,navy)
+    txt(245,H-249,"asistentes",15,True,navy)
+    txt(245,H-268,"de "+str(expected)+" previstos",10,False,muted)
+    # KPI cards
+    y=H-393
+    cards=[("ASISTENCIA ACUMULADA",str(accumulated),"personas distintas"),
+           ("COBERTURA DEL DIA",percent(daily,expected),"sobre previstos"),
+           ("COBERTURA DEL UNIVERSO",percent(accumulated,3853),"de 3.853 docentes")]
+    gap=9
+    cardw=(W-80-gap*2)/3
+    for i,(label,value,detail) in enumerate(cards):
+        x=40+i*(cardw+gap)
+        rect(x,y,cardw,80,light,8,HexColor("#d8e5f0"))
+        txt(x+12,y+60,label,8,True,muted)
+        txt(x+12,y+30,value,24,True,navy)
+        txt(x+12,y+14,detail,8,False,muted)
+    # History
+    hy=H-422
+    txt(40,hy,"HISTORICO DE ASISTENCIA",12,True,navy)
+    history=dates[-5:]
+    max_history=max([num([r for r in relevant if day(at(r,13))==d]) for d in history] or [1])
+    for i,d in enumerate(history):
+        ry=hy-31-i*30
         group=[r for r in relevant if day(at(r,13))==d]
-        expected=sum(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[]))
-        date_rows.append([date_label(d),str(ids(group)),str(expected) if expected else "—",percent(ids(group),expected)])
-    story.append(grid(date_rows))
-    story.append(title("Asistencia del día por turno"))
-    turn_rows=[["Turno","Asistentes","Previstos","Cobertura"]]
+        n=num(group)
+        exp=sum(PLANNED.get(weekday[d.weekday()],[]))
+        txt(42,ry,d.strftime("%d/%m"),9,True,navy)
+        bar(99,ry-1,310,n,max_history)
+        txt(424,ry,str(n),10,True,navy)
+        txt(466,ry,percent(n,exp),9,False,muted)
+    # Turnos and dependencies side by side
+    lower=hy-31-len(history)*30-25
+    txt(40,lower,"ASISTENCIA POR TURNO",11,True,navy)
+    txt(318,lower,"POR DEPENDENCIA",11,True,navy)
     for i,name in enumerate(SHIFTS):
-        n=ids([r for r in today if norm(at(r,14))==norm(name)])
-        expected=plan[i] if i<len(plan) else 0
-        turn_rows.append([name,str(n),str(expected) if expected else "—",percent(n,expected)])
-    story.append(grid(turn_rows))
-    story.append(title("Asistencia del día por dependencia"))
-    dep_rows=[["Dependencia","Asistentes","Universo","Cobertura acumulada"]]
-    for name,universe in BASE.items():
-        n=ids([r for r in today if dep(at(r,5))==name])
-        accumulated=ids([r for r in relevant if dep(at(r,5))==name])
-        dep_rows.append([name,str(n),str(universe),percent(accumulated,universe)])
-    story.append(grid(dep_rows))
-    story.append(Spacer(1,5*mm))
-    story.append(Paragraph("Reporte de asistencia creado y diseñado por Sebastian Giampani",styles["TDDCenter"]))
-    def footer(canvas,document):
-        canvas.setFillColor(blue);canvas.rect(0,0,210*mm,10*mm,fill=1,stroke=0)
-        canvas.setFillColor(colors.white);canvas.setFont("Helvetica",7)
-        canvas.drawCentredString(105*mm,4*mm,"ESCUELA DE MAESTROS  ·  MINISTERIO DE EDUCACION  ·  TDD 2027")
-        canvas.setFillColor(ink);canvas.drawRightString(196*mm,12*mm,str(document.page))
-    doc.build(story,onFirstPage=footer,onLaterPages=footer)
-    return out.getvalue()
+        n=num([r for r in today if norm(at(r,14))==norm(name)])
+        exp=plan[i] if i<len(plan) else 0
+        yy=lower-28-i*36
+        txt(41,yy,name,9,True,navy)
+        bar(113,yy-2,92,n,exp)
+        txt(212,yy,str(n),10,True,navy)
+        txt(245,yy,percent(n,exp),8,False,muted)
+    for i,(name,universe) in enumerate(BASE.items()):
+        n=num([r for r in today if dep(at(r,5))==name])
+        yy=lower-28-i*29
+        txt(319,yy,name,9,True,navy)
+        bar(364,yy-2,104,n,max(1,daily))
+        txt(478,yy,str(n),10,True,navy)
+    rect(40,73,W-80,42,light,6)
+    txt(52,97,"La asistencia se calcula en base a DNI unicos.",9,True,navy)
+    txt(52,82,"Cada persona se cuenta una sola vez por jornada.",8,False,muted)
+    txt(40,54,"Reporte de asistencia creado y diseñado por Sebastian Giampani",8,False,muted)
+    rect(0,0,W,35,navy,0)
+    txt(40,14,"ESCUELA DE MAESTROS  /  MINISTERIO DE EDUCACION  /  TDD 2027",8,True,white)
+    cv.showPage()
+    cv.save()
+    return output.getvalue()
 
 def main():
     password=os.environ.get("TDD_GMAIL_APP_PASSWORD","").replace(" ","")
