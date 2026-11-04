@@ -108,6 +108,83 @@ def encrypted_workbook(rows, password):
         raise RuntimeError("No se pudo verificar el cifrado del archivo Excel; envio cancelado.")
     return data
 
+
+def visual_pdf(records, target):
+    """Resumen imprimible sin datos nominales; todas las cifras son DNI unicos."""
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.units import mm
+    from collections import defaultdict
+
+    blue=colors.HexColor("#153e70")
+    light=colors.HexColor("#eaf2fb")
+    ink=colors.HexColor("#12395c")
+    styles=getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="TDDTitle",parent=styles["Title"],fontName="Helvetica-Bold",fontSize=16,leading=20,textColor=blue,spaceAfter=9))
+    styles.add(ParagraphStyle(name="TDDSection",parent=styles["Heading2"],fontSize=11,leading=14,textColor=blue,spaceBefore=13,spaceAfter=6))
+    styles.add(ParagraphStyle(name="TDDSmall",parent=styles["Normal"],fontSize=8,leading=12,textColor=ink))
+    styles.add(ParagraphStyle(name="TDDCenter",parent=styles["Normal"],fontSize=9,leading=13,alignment=TA_CENTER,textColor=ink))
+    out=BytesIO()
+    doc=SimpleDocTemplate(out,pagesize=(210*mm,297*mm),leftMargin=14*mm,rightMargin=14*mm,topMargin=13*mm,bottomMargin=15*mm)
+    width=182*mm
+    def grid(data,widths=None,header=True):
+        t=Table(data,colWidths=widths or [width/len(data[0])]*len(data[0]),repeatRows=1 if header else 0,hAlign="LEFT")
+        commands=[("VALIGN",(0,0),(-1,-1),"MIDDLE"),("BOTTOMPADDING",(0,0),(-1,-1),7),("TOPPADDING",(0,0),(-1,-1),7),("LINEBELOW",(0,0),(-1,-1),.35,colors.HexColor("#c8d9ed")),("TEXTCOLOR",(0,0),(-1,-1),ink),("FONTSIZE",(0,0),(-1,-1),8)]
+        if header:commands += [("BACKGROUND",(0,0),(-1,0),blue),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold")]
+        t.setStyle(TableStyle(commands))
+        return t
+    def ids(items):return count(items)
+    def title(txt):return Paragraph(txt,styles["TDDSection"])
+    def date_label(d):return d.strftime("%d/%m/%Y")
+    story=[]
+    logo_png=cairosvg.svg2png(url="assets/em-logo-header.svg",output_width=500)
+    logo=Image(BytesIO(logo_png),width=62*mm,height=8.4*mm)
+    story.extend([logo,Spacer(1,8*mm),Paragraph("C0890 · TDD 2027 · Informe general de asistencia",styles["TDDTitle"]),
+                  Paragraph("Talleres de Diseño · Fecha del informe: "+date_label(target),styles["TDDSmall"]),Spacer(1,5*mm)])
+    observed=sorted({day(at(r,13)) for r in records if day(at(r,13)) and day(at(r,13))<=target})
+    relevant=[r for r in records if day(at(r,13)) and day(at(r,13))<=target]
+    today=[r for r in relevant if day(at(r,13))==target]
+    plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
+    total_plan=sum(plan)
+    stats=[["Asistencia del día","Asistencia acumulada","Cobertura del día","Cobertura del universo"],
+           [str(ids(today)),str(ids(relevant)),percent(ids(today),total_plan),percent(ids(relevant),3853)]]
+    story.append(grid(stats,header=True))
+    story.append(Paragraph("Universo de referencia: 3.853 docentes. La asistencia se calcula en base a DNI únicos.",styles["TDDSmall"]))
+    story.append(title("Asistencia por fecha"))
+    date_rows=[["Fecha","Asistentes","Previstos","Cobertura"]]
+    for d in observed:
+        group=[r for r in relevant if day(at(r,13))==d]
+        expected=sum(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[]))
+        date_rows.append([date_label(d),str(ids(group)),str(expected) if expected else "—",percent(ids(group),expected)])
+    story.append(grid(date_rows))
+    story.append(title("Asistencia del día por turno"))
+    turn_rows=[["Turno","Asistentes","Previstos","Cobertura"]]
+    for i,name in enumerate(SHIFTS):
+        n=ids([r for r in today if norm(at(r,14))==norm(name)])
+        expected=plan[i] if i<len(plan) else 0
+        turn_rows.append([name,str(n),str(expected) if expected else "—",percent(n,expected)])
+    story.append(grid(turn_rows))
+    story.append(title("Asistencia del día por dependencia"))
+    dep_rows=[["Dependencia","Asistentes","Universo","Cobertura acumulada"]]
+    for name,universe in BASE.items():
+        n=ids([r for r in today if dep(at(r,5))==name])
+        accumulated=ids([r for r in relevant if dep(at(r,5))==name])
+        dep_rows.append([name,str(n),str(universe),percent(accumulated,universe)])
+    story.append(grid(dep_rows))
+    story.append(title("Asistencia por fecha y sede"))
+    story.append(Paragraph("Los datos de sede se obtienen de la planilla Propuestas. El detalle nominal permanece en el Excel cifrado.",styles["TDDSmall"]))
+    story.append(Spacer(1,5*mm))
+    story.append(Paragraph("Reporte de asistencia creado y diseñado por Sebastian Giampani",styles["TDDCenter"]))
+    def footer(canvas,document):
+        canvas.setFillColor(blue);canvas.rect(0,0,210*mm,10*mm,fill=1,stroke=0)
+        canvas.setFillColor(colors.white);canvas.setFont("Helvetica",7)
+        canvas.drawCentredString(105*mm,4*mm,"ESCUELA DE MAESTROS  ·  MINISTERIO DE EDUCACION  ·  TDD 2027")
+        canvas.setFillColor(ink);canvas.drawRightString(196*mm,12*mm,str(document.page))
+    doc.build(story,onFirstPage=footer,onLaterPages=footer)
+    return out.getvalue()
+
 def main():
     password=os.environ.get("TDD_GMAIL_APP_PASSWORD","").replace(" ","")
     excel_password=os.environ.get("TDD_EXCEL_PASSWORD","")
@@ -238,7 +315,7 @@ def main():
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=EMAIL
     message["Subject"]=f"[PRUEBA] TDD 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
-    message.set_content("Reporte de TDD 2027 en formato HTML con un archivo Excel cifrado adjunto.")
+    message.set_content("Reporte de TDD 2027 en HTML, PDF visual y Excel cifrado adjuntos.")
     message.add_alternative(html,subtype="html")
     # Gmail no renderiza SVG de forma fiable: convertir los logos del portal a PNG
     # e incrustarlos como imagenes relacionadas (CID), sin depender de enlaces externos.
@@ -249,6 +326,9 @@ def main():
         png=cairosvg.svg2png(bytestring=svg.read_bytes(),output_width=420)
         html_part.add_related(png,maintype="image",subtype="png",cid=f"<{cid}>",filename=svg.stem+".png")
 
+    pdf=visual_pdf(records,target)
+    if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF visual invalido; envio cancelado.")
+    message.add_attachment(pdf,maintype="application",subtype="pdf",filename=f"TDD2027_informe_visual_{target.isoformat()}.pdf")
     excel=encrypted_workbook(today,excel_password)
     message.add_attachment(excel,maintype="application",subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",filename=f"TDD2027_asistencias_{target.isoformat()}_PROTEGIDO.xlsx")
     with smtplib.SMTP_SSL("smtp.gmail.com",465,context=ssl.create_default_context(),timeout=30) as smtp:
