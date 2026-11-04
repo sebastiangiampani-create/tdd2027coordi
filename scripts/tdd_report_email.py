@@ -173,30 +173,6 @@ def visual_pdf(records, target, proposals):
         accumulated=ids([r for r in relevant if dep(at(r,5))==name])
         dep_rows.append([name,str(n),str(universe),percent(accumulated,universe)])
     story.append(grid(dep_rows))
-    story.append(title("Asistencia por fecha y sede"))
-    venues=defaultdict(set)
-    by_code=defaultdict(set)
-    by_pair={}
-    for p in proposals[1:]:
-        code=re.sub(r"[^a-z0-9]","",norm(at(p,0)))
-        commission=re.sub(r"[^a-z0-9]","",norm(at(p,1)))
-        venue=at(p,7)
-        if code and venue:
-            by_code[code].add(venue)
-            if commission:by_pair[(code,commission)]=venue
-    venue_rows=[["Fecha","Sede de capacitación","Asistentes"]]
-    for r in relevant:
-        d=day(at(r,13))
-        code=re.sub(r"[^a-z0-9]","",norm(at(r,10)))
-        commission=re.sub(r"[^a-z0-9]","",norm(at(r,11)))
-        matches=by_code.get(code,set())
-        venue=by_pair.get((code,commission)) or (next(iter(matches)) if len(matches)==1 else "Sede sin identificar")
-        identifier=at(r,1)
-        if identifier:venues[(date_label(d),venue)].add(identifier)
-    for (date,venue),identifiers in sorted(venues.items(),key=lambda x:(datetime.strptime(x[0][0],"%d/%m/%Y"),x[0][1])):
-        venue_rows.append([date,Paragraph(escape(venue),styles["TDDSmall"]),str(len(identifiers))])
-    story.append(grid(venue_rows,[25*mm,132*mm,25*mm]))
-    story.append(Paragraph("Los totales por sede corresponden a personas distintas dentro de cada agrupamiento. El detalle nominal permanece en el Excel cifrado.",styles["TDDSmall"]))
     story.append(Spacer(1,5*mm))
     story.append(Paragraph("Reporte de asistencia creado y diseñado por Sebastian Giampani",styles["TDDCenter"]))
     def footer(canvas,document):
