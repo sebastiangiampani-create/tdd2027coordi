@@ -4,6 +4,11 @@ from zoneinfo import ZoneInfo
 from email.message import EmailMessage
 from html import escape
 from collections import defaultdict
+from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+import msoffcrypto
 
 SID="1hznlu4j_Ip4KqYNpMrdhvbJvnHrPl0hOIJ6qBOsTRb4"
 EMAIL="sebastian.giampani@bue.edu.ar"
@@ -55,14 +60,56 @@ def table(headers,records):
         out+='<tr style="background:#edf3fa">'+''.join(f'<td style="border-bottom:3px solid white">{escape(str(v))}</td>' for v in row)+'</tr>'
     return out+'</table>'
 
-def attachment(rows):
-    buf=io.StringIO();w=csv.writer(buf)
-    w.writerow(["Fecha","Dependencia","Escuela","Area convocada","Turno","Comision","DNI","Apellido","Nombre","Codigo"])
-    for r in rows: w.writerow([at(r,13),dep(at(r,5)),at(r,7),at(r,9),at(r,14),at(r,11),at(r,1),at(r,3),at(r,2),at(r,10)])
-    return ("\ufeff"+buf.getvalue()).encode("utf-8")
+def encrypted_workbook(rows, password):
+    wb=Workbook()
+    details=wb.active
+    details.title="Detalle nominal"
+    columns=["Fecha","Dependencia","Escuela de pertenencia","Area convocada","Turno","Comision","DNI","Apellido","Nombre","Codigo"]
+    details.append(columns)
+    for r in rows:
+        details.append([at(r,13),dep(at(r,5)),at(r,7),at(r,9),at(r,14),at(r,11),at(r,1),at(r,3),at(r,2),at(r,10)])
+    groups=[
+        ("Por escuela",lambda r:(at(r,7),at(r,9)),["Escuela","Area","Docentes unicos"]),
+        ("Por area",lambda r:(at(r,9),at(r,7)),["Area","Escuela","Docentes unicos"])
+    ]
+    for name,key,headers in groups:
+        ws=wb.create_sheet(name)
+        ws.append(headers)
+        counts=defaultdict(set)
+        for r in rows:
+            if at(r,1): counts[key(r)].add(at(r,1))
+        for pair,ids in sorted(counts.items()):
+            ws.append([pair[0],pair[1],len(ids)])
+    for ws in wb.worksheets:
+        ws.freeze_panes="A2"
+        ws.auto_filter.ref=ws.dimensions
+        ws.row_dimensions[1].height=28
+        for cell in ws[1]:
+            cell.fill=PatternFill("solid",fgColor="153E70")
+            cell.font=Font(bold=True,color="FFFFFF")
+            cell.alignment=Alignment(vertical="center")
+        for col in ws.columns:
+            letter=get_column_letter(col[0].column)
+            width=min(60,max(14,max(len(str(cell.value or "")) for cell in col[:150])+3))
+            ws.column_dimensions[letter].width=width
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment=Alignment(vertical="top",wrap_text=True)
+    raw=BytesIO()
+    wb.save(raw)
+    raw.seek(0)
+    protected=BytesIO()
+    office=msoffcrypto.OfficeFile(raw)
+    office.encrypt(password,protected)
+    data=protected.getvalue()
+    if not data.startswith(bytes.fromhex("d0cf11e0a1b11ae1")):
+        raise RuntimeError("No se pudo verificar el cifrado del archivo Excel; envio cancelado.")
+    return data
 
 def main():
     password=os.environ.get("TDD_GMAIL_APP_PASSWORD","").replace(" ","")
+    excel_password=os.environ.get("TDD_EXCEL_PASSWORD","")
+    if len(excel_password)<12: raise RuntimeError("Falta TDD_EXCEL_PASSWORD o es demasiado corta (minimo 12 caracteres).")
     if not password: raise RuntimeError("Falta TDD_GMAIL_APP_PASSWORD en GitHub Secrets.")
     requested=os.environ.get("REPORT_DATE","").strip()
     target=datetime.strptime(requested,"%Y-%m-%d").date() if requested else datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
@@ -96,24 +143,33 @@ def main():
         area[(at(r,9),at(r,7))].add(at(r,1))
     school_summary=[[s,a,len(ids)] for (s,a),ids in sorted(school.items())]
     area_summary=[[a,s,len(ids)] for (a,s),ids in sorted(area.items())]
-    html=f"""<html><body style="font-family:Arial,sans-serif;background:#f3f6fa;color:#153e70;margin:0;padding:20px"><div style="max-width:780px;margin:auto;background:white;padding:22px">
-    <div style="background:#153e70;color:white;text-align:center;padding:26px;border-radius:10px"><small>ESCUELA DE MAESTROS · TDD 2027</small><h1>Reporte diario de asistencia</h1><p>{target.strftime('%d/%m/%Y')} · {weekday}</p></div>
-    <h2>Indicadores generales</h2>
-    {table(["Indicador","Valor"],[["Docentes únicos acumulados",count(records)],["Registros acumulados",len(records)],["Universo de docentes",3853],["Cobertura del universo",percent(count(records),3853)],["Asistencia acumulada",percent(cumulative,cumulative_expected)],["Asistencias de la fecha",len(today)],["Docentes únicos de la fecha",count(today)],["Cobertura de la fecha",percent(count(today),total_expected)]])}
-    <h2>Asistencias por turno</h2>{table(["Turno","Registros","Docentes únicos","Cobertura"],shifts)}
-    <h2>Dependencias</h2>{table(["Dependencia","Asistieron hoy","Únicos acumulados","Cobertura acumulada"],dependencies)}
-    <h2>Docentes asistentes por escuela y área</h2>{table(["Escuela","Área","Docentes únicos"],school_summary)}
-    <h2>Docentes asistentes por área y escuela</h2>{table(["Área","Escuela","Docentes únicos"],area_summary)}
-    <h2>Archivos para descargar</h2><p>Se adjuntan dos CSV compatibles con Excel, ordenados por escuela y por área. Incluyen el detalle nominal de docentes asistentes de esta fecha. Los archivos no se publican en GitHub Pages.</p>
-    <p><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html">Abrir tablero TDD 2027</a></p>
-    <p style="font-size:12px;color:#667">Prueba manual, solo destinatario autorizado. Origen: Asistencias y Propuestas (solo lectura).</p></div></body></html>"""
+    html=f"""<html><body style="margin:0;padding:18px;background:#f1f5fa;font-family:Arial,Helvetica,sans-serif;color:#183c64">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:680px;margin:auto;background:#ffffff">
+    <tr><td style="background:#153e70;color:white;padding:24px">
+    <div style="font-size:12px;letter-spacing:1px">ESCUELA DE MAESTROS · MINISTERIO DE EDUCACIÓN</div>
+    <h1 style="font-size:25px;margin:12px 0 4px">TDD 2027 · Asistencia</h1>
+    <div style="font-size:14px">{target.strftime('%d/%m/%Y')} · {weekday}</div></td></tr>
+    <tr><td style="padding:20px">
+    <table role="presentation" width="100%" cellpadding="10" cellspacing="4">
+    <tr><td style="background:#edf4fc"><strong style="font-size:26px">{len(today)}</strong><br><small>Registros del día</small></td>
+    <td style="background:#edf4fc"><strong style="font-size:26px">{count(today)}</strong><br><small>Docentes únicos del día</small></td></tr>
+    <tr><td style="background:#edf4fc"><strong style="font-size:26px">{percent(count(today),total_expected)}</strong><br><small>Cobertura del día</small></td>
+    <td style="background:#edf4fc"><strong style="font-size:26px">{count(records)}</strong><br><small>Docentes únicos acumulados</small></td></tr></table>
+    <p style="font-size:13px;color:#566b83">Universo: 3.853 docentes · Cobertura del universo: {percent(count(records),3853)} · Asistencia acumulada: {percent(cumulative,cumulative_expected)}</p>
+    <h2 style="font-size:17px">Por turno</h2>{table(["Turno","Registros","Unicos","Cobertura"],shifts)}
+    <h2 style="font-size:17px;margin-top:18px">Por dependencia</h2>{table(["Dependencia","Hoy","Unicos acumulados","Cobertura"],dependencies)}
+    <p style="font-size:13px;margin-top:20px"><strong>Detalle nominal:</strong> archivo Excel cifrado adjunto, con tres hojas (detalle, escuela y área). La contraseña se comunica por separado.</p>
+    <p style="font-size:13px"><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html" style="color:#1761a0">Consultar tablero de asistencia</a></p>
+    <p style="font-size:11px;color:#63758a">Reporte generado {datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).strftime('%d/%m/%Y %H:%M')} (Buenos Aires). Datos consultados en modo lectura.</p>
+    </td></tr></table></body></html>"""
+
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=EMAIL
     message["Subject"]=f"[PRUEBA] TDD 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
     message.set_content("Reporte de TDD 2027 en formato HTML con dos archivos adjuntos.")
     message.add_alternative(html,subtype="html")
-    for name,key in [("por_escuela",lambda r:(norm(at(r,7)),norm(at(r,9)),norm(at(r,3)))),("por_area",lambda r:(norm(at(r,9)),norm(at(r,7)),norm(at(r,3))))]:
-        message.add_attachment(attachment(sorted(today,key=key)),maintype="text",subtype="csv",filename=f"TDD2027_{name}_{target.isoformat()}.csv")
+    excel=encrypted_workbook(today,excel_password)
+    message.add_attachment(excel,maintype="application",subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",filename=f"TDD2027_asistencias_{target.isoformat()}_PROTEGIDO.xlsx")
     with smtplib.SMTP_SSL("smtp.gmail.com",465,context=ssl.create_default_context(),timeout=30) as smtp:
         smtp.login(EMAIL,password)
         smtp.send_message(message)
