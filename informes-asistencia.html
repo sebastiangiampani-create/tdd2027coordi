@@ -81,7 +81,7 @@ function dateOnly(v){const s=clean(v);const m=s.match(/^(\d{1,2}\/\d{1,2}\/\d{4}
 function shift(v){const s=norm(v);if(!s)return 'Sin dato';if(s.includes('manana'))return 'Mañana';if(s.includes('tarde'))return 'Tarde';if(s.includes('vespert')||s.includes('noche'))return 'Vespertino';return clean(v)}
 function value(r,index){return index===14?shift(r[14]):index===13?dateOnly(r[13]||r[0]):clean(r[index])}
 function codeKey(v){return norm(v).replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')}
-function venueOf(r){return proposals.get(codeKey(r[10]))||'Sede sin identificar'}
+function venueOf(r){const key=codeKey(r[10]),commission=codeKey(r[11]);return proposals.get(key+'|'+commission)||proposals.get(key)||'Sede sin identificar'}
 function joinVenues(){rows.forEach(r=>r[15]=venueOf(r));options()}
 function venueCounts(items){const m=new Map();for(const r of items){const name=r[15]||'Sede sin identificar';m.set(name,(m.get(name)||0)+1)}return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'))}
 function venueBreakdown(items){const box=document.createElement('div');box.className='venue-breakdown';for(const [name,count] of venueCounts(items)){const line=document.createElement('div');line.className='venue-line';const n=document.createElement('span');n.textContent=name;const v=document.createElement('strong');v.textContent=count;line.append(n,v);box.append(line)}return box}
@@ -259,7 +259,37 @@ $('toggleRecords').addEventListener('click',()=>{const panel=$('recordsContent')
 $('print').addEventListener('click',()=>window.print());
 $('export').addEventListener('click',()=>{if(typeof XLSX==='undefined'){alert('No se pudo cargar la librería de Excel');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HEAD,...filtered]),'Asistencias');XLSX.writeFile(wb,'informe_asistencia_TDD2027.xlsx')});
 const SHEET_ID='1hznlu4j_Ip4KqYNpMrdhvbJvnHrPl0hOIJ6qBOsTRb4';
-function loadProposals(){const callback='tdd_proposals_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let timer;function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}function done(message){cleanup();proposalsLoaded=true;joinVenues();if(message)$('status').textContent=message;else $('status').textContent='Datos actualizados: '+rows.length+' registros · '+countUnique(rows)+' DNI únicos. Sedes cruzadas con Propuestas (solo lectura).'}window[callback]=res=>{if(res.status==='error'||!res.table){done('Asistencias disponibles; no se pudieron leer las sedes de Propuestas.');return}const columns=(res.table.cols||[]).map(x=>norm(x.label||x.id));const codeIndex=columns.findIndex(x=>x==='codigo'||x==='código');const venueIndex=columns.findIndex(x=>x==='sede');const ci=codeIndex>=0?codeIndex:0,vi=venueIndex>=0?venueIndex:7;const map=new Map();for(const row of res.table.rows||[]){const cells=row.c||[],key=codeKey(cellValue(cells[ci])),venue=cellValue(cells[vi]);if(key&&venue)map.set(key,venue)}proposals=map;done()};tag.onerror=()=>done('Asistencias disponibles; no se pudo cargar Propuestas.');timer=setTimeout(()=>done('Asistencias disponibles; la carga de Propuestas tardó demasiado.'),25000);tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'0',range:'A:S',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});document.head.append(tag)}
+function loadProposals(){
+ const callback='tdd_proposals_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let timer,finished=false;
+ function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}
+ function done(message){if(finished)return;finished=true;cleanup();proposalsLoaded=proposals.size>0;joinVenues();$('status').textContent=message||('Datos actualizados: '+rows.length+' registros · '+countUnique(rows)+' DNI únicos. '+proposals.size+' referencias de sede cargadas desde Propuestas.')}
+ window[callback]=res=>{
+  if(res.status==='error'||!res.table){done('Asistencias disponibles; no se pudieron leer las sedes de Propuestas.');return}
+  const cols=(res.table.cols||[]).map(x=>norm(x.label||x.id));
+  const data=res.table.rows||[];
+  const headerRow=data.length?data[0].c||[]:[];
+  const first=headerRow.map(x=>norm(cellValue(x)));
+  const find=(names,defaultIndex)=>{let i=cols.findIndex(x=>names.includes(x));if(i<0)i=first.findIndex(x=>names.includes(x));return i>=0?i:defaultIndex};
+  const ci=find(['codigo','cod','codigo de propuesta','codigo de capacitacion'],0);
+  const vi=find(['sede','sede de capacitacion','lugar de capacitacion','lugar','sede / lugar'],7);
+  const mi=find(['comision','comision nro','numero de comision'],1);
+  const map=new Map(),byCode=new Map();
+  for(const row of data){
+   const cells=row.c||[],key=codeKey(cellValue(cells[ci])),commission=codeKey(cellValue(cells[mi])),venue=clean(cellValue(cells[vi]));
+   if(!key||!venue||['sede','sede de capacitacion'].includes(norm(venue))||['codigo','cod'].includes(key))continue;
+   if(commission)map.set(key+'|'+commission,venue);
+   if(!byCode.has(key))byCode.set(key,new Set());
+   byCode.get(key).add(venue);
+  }
+  for(const [key,venues] of byCode){if(venues.size===1)map.set(key,[...venues][0])}
+  if(map.size)proposals=map;
+  done(map.size?'':'No se encontraron sedes válidas en Propuestas. Revisar encabezados y permisos de lectura.');
+ };
+ tag.onerror=()=>done('Asistencias disponibles; no se pudo cargar Propuestas.');
+ timer=setTimeout(()=>done('Asistencias disponibles; la carga de Propuestas tardó demasiado.'),25000);
+ tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'0',range:'A:S',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
+ document.head.append(tag)
+}
 function cellValue(c){if(!c)return '';if(c.f!=null)return clean(c.f);if(c.v==null)return '';if(typeof c.v==='string'&&c.v.startsWith('Date(')){const m=c.v.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?/);if(m)return String(m[3]).padStart(2,'0')+'/'+String(Number(m[2])+1).padStart(2,'0')+'/'+m[1]+(m[4]!=null?' '+String(m[4]).padStart(2,'0')+':'+String(m[5]).padStart(2,'0')+':'+String(m[6]).padStart(2,'0'):'')}return clean(c.v)}
 function load(){const status=$('status');status.textContent='Consultando Google Sheets…';const callback='tdd_assist_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let timer;
 function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}
