@@ -1,0 +1,36 @@
+{
+  "destinatarios": [
+    {
+      "email": "sebastian.giampani@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "sole.rodriguez@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "cecilia.bernardi@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "alejandra.amantea@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "karina.pagani@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "viviana.dalla@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "ana.copes@bue.edu.ar",
+      "activo": true
+    },
+    {
+      "email": "coordinacionsecundaria.edm@bue.edu.ar",
+      "activo": true
+    }
+  ]
+}
