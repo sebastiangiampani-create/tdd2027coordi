@@ -1,5 +1,7 @@
-name: TDD 2027 - Enviar correo de prueba
+name: TDD 2027 - Informe de asistencia
 on:
+  schedule:
+    - cron: "15 23 * * 1-5" # 20:15 Argentina (UTC-3), lunes a viernes
   workflow_dispatch:
     inputs:
       fecha:
@@ -9,14 +11,17 @@ on:
 permissions:
   contents: read
 jobs:
-  prueba:
+  informe:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: tdd-attendance-email
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - name: Instalar bibliotecas para Excel cifrado
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
-      - name: Enviar correo HTML a Sebastian
+      - name: Enviar informe si hay asistencia de la jornada
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
           TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
