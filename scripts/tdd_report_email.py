@@ -228,6 +228,9 @@ def main():
     if len(proposals)<2 or len(all_rows)<2: raise RuntimeError("Planillas sin datos o inaccesibles; no se envia.")
     records=[r for r in all_rows[1:] if at(r,1)]
     today=[r for r in records if day(at(r,13))==target]
+    if not today and os.environ.get("GITHUB_EVENT_NAME")=="schedule":
+        print(f"Sin asistencias cargadas para {target.isoformat()}: no hubo envio automatico.")
+        return
     if not today:
         from collections import Counter
         print("Diagnostic date values (no names):", Counter(at(r,13) for r in records).most_common(8))
