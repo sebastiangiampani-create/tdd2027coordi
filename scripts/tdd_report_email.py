@@ -198,7 +198,7 @@ def main():
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;margin:auto;background:#ffffff;border:1px solid #dce5ed;border-radius:12px">
     <tr><td style="padding:18px 20px;border-bottom:1px solid #dce5ed">
       <img src="cid:em_logo" alt="Escuela de Maestros" width="170" style="max-width:45%;height:auto;vertical-align:middle;border:0">
-      <img src="cid:ministerio_logo" alt="Ministerio de Educación" width="160" style="max-width:43%;height:auto;vertical-align:middle;float:right;border:0">
+      <span style="float:right;color:#153e70;font-size:12px;font-weight:700;padding-top:12px">MINISTERIO DE EDUCACIÓN</span>
     </td></tr>
     <tr><td style="padding:18px 20px 5px">
       <div style="font-size:12px;font-weight:700;color:#215b98">C0890 · TALLERES DE DISEÑO · TDD 2027</div>
@@ -232,7 +232,7 @@ def main():
       <p style="font-size:12px;margin:15px 5px"><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html" style="color:#174e8a;font-weight:700">Abrir el tablero de asistencia</a></p>
       <p style="font-size:11px;color:#526b80;margin:12px 5px 0"><strong>Nota metodológica:</strong> La asistencia se calcula en base a DNI únicos. Cada persona se cuenta una sola vez por jornada.</p>
       <p style="font-size:10px;color:#667c8e;margin:12px 5px 0">Reporte de prueba · Consulta de planillas en modo lectura · Datos sujetos a actualización</p>
-    </td></tr><tr><td style="background:#153e70;padding:15px 20px;text-align:center;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.3px">ESCUELA DE MAESTROS &nbsp;·&nbsp; MINISTERIO DE EDUCACIÓN &nbsp;·&nbsp; TDD 2027</td></tr></table></body></html>"""
+    </td></tr><tr><td style="background:#153e70;padding:17px 20px;text-align:center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="42%" align="left" valign="middle"><img src="cid:em_footer_logo" alt="Escuela de Maestros" width="145" style="display:block;width:145px;max-width:100%;height:auto;border:0"></td><td width="58%" align="right" valign="middle"><img src="cid:ministerio_logo" alt="Ministerio de Educación · Buenos Aires Ciudad" width="225" style="display:block;width:225px;max-width:100%;height:auto;border:0;margin-left:auto"></td></tr></table></td></tr></table></body></html>"""
 
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=EMAIL
@@ -242,7 +242,7 @@ def main():
     # Gmail no renderiza SVG de forma fiable: convertir los logos del portal a PNG
     # e incrustarlos como imagenes relacionadas (CID), sin depender de enlaces externos.
     html_part=message.get_payload()[-1]
-    for logo_path,cid in [(logo_header,"em_logo"),(logo_ministry,"ministerio_logo")]:
+    for logo_path,cid in [(logo_header,"em_logo"),("assets/em-logo-footer.svg","em_footer_logo"),(logo_ministry,"ministerio_logo")]:
         svg=Path(logo_path)
         if not svg.is_file(): raise RuntimeError(f"Logo institucional ausente: {logo_path}")
         png=cairosvg.svg2png(bytestring=svg.read_bytes(),output_width=420)
