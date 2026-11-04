@@ -14,8 +14,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Instalar bibliotecas para Excel cifrado
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool
       - name: Enviar correo HTML a Sebastian
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
           REPORT_DATE: ${{ inputs.fecha }}
         run: python3 scripts/tdd_report_email.py
