@@ -350,7 +350,7 @@ def main():
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=", ".join([EMAIL, *CC_RECIPIENTS])
     message["Subject"]=f"Talleres de diseño 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
-    message.set_content("Reporte de TDD 2027 en HTML, PDF visual y Excel cifrado adjuntos.")
+    message.set_content(f"Se comparte el informe de asistencia correspondiente a los Talleres de Diseño 2027 del dia {target.strftime('%d/%m/%Y')}. Se adjuntan el PDF visual y el Excel nominal cifrado.")
     message.add_alternative(html,subtype="html")
     # Gmail no renderiza SVG de forma fiable: convertir los logos del portal a PNG
     # e incrustarlos como imagenes relacionadas (CID), sin depender de enlaces externos.
