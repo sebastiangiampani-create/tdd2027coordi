@@ -232,7 +232,7 @@ def main():
       <p style="font-size:12px;margin:15px 5px"><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html" style="color:#174e8a;font-weight:700">Abrir el tablero de asistencia</a></p>
       <p style="font-size:11px;color:#526b80;margin:12px 5px 0"><strong>Nota metodológica:</strong> La asistencia se calcula en base a DNI únicos. Cada persona se cuenta una sola vez por jornada.</p>
       <p style="font-size:10px;color:#667c8e;margin:12px 5px 0">Reporte de prueba · Consulta de planillas en modo lectura · Datos sujetos a actualización</p>
-    </td></tr></table></body></html>"""
+    </td></tr><tr><td style="background:#153e70;padding:15px 20px;text-align:center;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.3px">ESCUELA DE MAESTROS &nbsp;·&nbsp; MINISTERIO DE EDUCACIÓN &nbsp;·&nbsp; TDD 2027</td></tr></table></body></html>"""
 
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=EMAIL
