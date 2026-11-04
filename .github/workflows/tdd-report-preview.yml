@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Instalar bibliotecas para Excel cifrado
-        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
       - name: Enviar correo HTML a Sebastian
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
