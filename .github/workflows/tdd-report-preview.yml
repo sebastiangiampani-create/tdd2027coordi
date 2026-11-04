@@ -1,11 +1,21 @@
-name: TDD report preview
+name: TDD 2027 - Enviar correo de prueba
 on:
   workflow_dispatch:
+    inputs:
+      fecha:
+        description: "Fecha del reporte AAAA-MM-DD (vacio = hoy en Buenos Aires)"
+        required: false
+        type: string
 permissions:
   contents: read
 jobs:
-  preview:
+  prueba:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: echo 'Preview configuration ready; no email sent'
+      - name: Enviar correo HTML a Sebastian
+        env:
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          REPORT_DATE: ${{ inputs.fecha }}
+        run: python3 scripts/tdd_report_email.py
