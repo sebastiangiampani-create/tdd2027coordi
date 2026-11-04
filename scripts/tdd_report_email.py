@@ -348,7 +348,7 @@ def main():
     </td></tr><tr><td style="background:#153e70;padding:17px 20px;text-align:center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="42%" align="left" valign="middle"><img src="cid:em_footer_logo" alt="Escuela de Maestros" width="145" style="display:block;width:145px;max-width:100%;height:auto;border:0"></td><td width="58%" align="right" valign="middle"><img src="cid:ministerio_logo" alt="Ministerio de Educación · Buenos Aires Ciudad" width="225" style="display:block;width:225px;max-width:100%;height:auto;border:0;margin-left:auto"></td></tr></table></td></tr></table></body></html>"""
 
     message=EmailMessage()
-    message["From"]=EMAIL;message["To"]=EMAIL;message["Cc"]=", ".join(CC_RECIPIENTS)
+    message["From"]=EMAIL;message["To"]=", ".join([EMAIL, *CC_RECIPIENTS])
     message["Subject"]=f"Talleres de diseño 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
     message.set_content("Reporte de TDD 2027 en HTML, PDF visual y Excel cifrado adjuntos.")
     message.add_alternative(html,subtype="html")
