@@ -1,4 +1,4 @@
-import csv, io, os, smtplib, ssl, urllib.request, unicodedata, re
+import csv, io, os, smtplib, ssl, urllib.request, unicodedata, re, json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from email.message import EmailMessage
@@ -14,7 +14,28 @@ from pathlib import Path
 
 SID="1hznlu4j_Ip4KqYNpMrdhvbJvnHrPl0hOIJ6qBOsTRb4"
 EMAIL="sebastian.giampani@bue.edu.ar"
-CC_RECIPIENTS=["sole.rodriguez@bue.edu.ar","cecilia.bernardi@bue.edu.ar","alejandra.amantea@bue.edu.ar","karina.pagani@bue.edu.ar","viviana.dalla@bue.edu.ar","ana.copes@bue.edu.ar","coordinacionsecundaria.edm@bue.edu.ar"]
+RECIPIENTS_FILE=Path("config/destinatarios.json")
+
+def recipients():
+    data=json.loads(RECIPIENTS_FILE.read_text(encoding="utf-8"))
+    entries=data.get("destinatarios")
+    if not isinstance(entries,list): raise ValueError("Configuracion de destinatarios invalida")
+    seen=set()
+    result=[]
+    for entry in entries:
+        if not isinstance(entry,dict) or not isinstance(entry.get("activo"),bool):
+            raise ValueError("Cada destinatario debe tener email y activo booleano")
+        email=entry.get("email","")
+        if not isinstance(email,str) or not re.fullmatch(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}",email):
+            raise ValueError("Direccion de correo invalida en configuracion")
+        email=email.lower()
+        if email in seen: raise ValueError("Correo duplicado en configuracion")
+        seen.add(email)
+        if entry["activo"]: result.append(email)
+    if not result: raise ValueError("No hay destinatarios activos; envio cancelado")
+    if EMAIL not in result: raise ValueError("El remitente principal debe permanecer activo")
+    return result
+
 BASE={"DEM":2045,"DET":1393,"DENS":113,"DEA":302}
 PLANNED={"Lunes":[356,225,251],"Martes":[283,274,175],"Miércoles":[437,362,305],"Jueves":[268,230,77],"Viernes":[227,205,178]}
 SHIFTS=["Mañana","Tarde","Vespertino"]
@@ -348,7 +369,7 @@ def main():
     </td></tr><tr><td style="background:#153e70;padding:17px 20px;text-align:center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="42%" align="left" valign="middle"><img src="cid:em_footer_logo" alt="Escuela de Maestros" width="145" style="display:block;width:145px;max-width:100%;height:auto;border:0"></td><td width="58%" align="right" valign="middle"><img src="cid:ministerio_logo" alt="Ministerio de Educación · Buenos Aires Ciudad" width="225" style="display:block;width:225px;max-width:100%;height:auto;border:0;margin-left:auto"></td></tr></table></td></tr></table></body></html>"""
 
     message=EmailMessage()
-    message["From"]=EMAIL;message["To"]=", ".join([EMAIL, *CC_RECIPIENTS])
+    message["From"]=EMAIL;message["To"]=", ".join(recipients())
     message["Subject"]=f"Talleres de diseño 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
     message.set_content(f"Se comparte el informe de asistencia correspondiente a los Talleres de Diseño 2027 del dia {target.strftime('%d/%m/%Y')}. Se adjuntan el PDF visual y el Excel nominal cifrado.")
     message.add_alternative(html,subtype="html")
@@ -369,6 +390,6 @@ def main():
     with smtplib.SMTP_SSL("smtp.gmail.com",465,context=ssl.create_default_context(),timeout=30) as smtp:
         smtp.login(EMAIL,password)
         smtp.send_message(message)
-    print(f"Informe enviado a {EMAIL} con {len(CC_RECIPIENTS)} destinatarios en copia; {count(today)} DNI unicos para {target.isoformat()}")
+    print(f"Informe enviado a {len(recipients())} destinatarios principales; {count(today)} DNI unicos para {target.isoformat()}")
 
 if __name__=="__main__": main()
