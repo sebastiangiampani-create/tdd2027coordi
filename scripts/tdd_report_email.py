@@ -25,7 +25,7 @@ def day(v):
     for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y"):
         try: return datetime.strptime(v,fmt).date()
         except ValueError: pass
-    m=re.search(r"Date\\((\\d+),(\\d+),(\\d+)",v)
+    m=re.search(r"Date\((\d+),(\d+),(\d+)",v)
     if m:
         from datetime import date
         return date(int(m[1]),int(m[2])+1,int(m[3]))
