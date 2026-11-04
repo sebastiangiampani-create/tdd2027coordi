@@ -146,10 +146,10 @@ def main():
             f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{bg};border:1px solid {border};border-radius:9px">'
             f'<tr><td align="center" style="padding:12px 4px 3px;font-size:12px;color:#12395c">{d.strftime("%d/%m")}</td></tr>'
             f'<tr><td align="center" style="font-size:28px;font-weight:700;color:#092b56">{people}</td></tr>'
-            '<tr><td align="center" style="font-size:11px;color:#526b80;padding:2px 4px 10px">DNI únicos</td></tr>'
+            '<tr><td align="center" style="font-size:11px;color:#526b80;padding:2px 4px 10px">asistentes</td></tr>'
             f'<tr><td style="padding:10px 8px;border-top:1px solid #c8d9ed"><strong style="font-size:16px;color:#092b56">{percent(people,planned).replace(".",",")}</strong>'
             f'<div style="background:#c6d8ee;height:7px;border-radius:4px;margin:6px 0"><div style="background:#2677bd;height:7px;width:{min(100,rate):.1f}%;border-radius:4px"></div></div>'
-            f'<div style="font-size:10px;color:#526b80">{people} únicos de {planned} previstos</div></td></tr></table></td>'
+            f'<div style="font-size:10px;color:#526b80">{people} asistentes de {planned} previstos</div></td></tr></table></td>'
         )
     history_html='<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
     for i,(d,people,planned) in enumerate(history):
@@ -206,31 +206,31 @@ def main():
       <div style="font-size:13px;color:#526b80">{weekday} {target.strftime('%d/%m/%Y')} · Actualizado {datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).strftime('%H:%M')} h</div>
     </td></tr>
     <tr><td style="padding:8px 15px 18px">
-      <h2 style="font-size:16px;margin:6px 5px 8px;color:#12395c">DNI únicos del día</h2>
+      <h2 style="font-size:16px;margin:6px 5px 8px;color:#12395c">Asistencia del día</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr><td style="padding:5px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#d8e9ff;border:2px solid #8bb4e0;border-radius:11px"><tr>
           <td style="padding:18px 20px">
             <div style="font-size:55px;line-height:1.05;font-weight:700;color:#092b56">{count(today)}</div>
-            <div style="font-size:17px;font-weight:700;color:#12395c;margin-top:8px">Docentes únicos que asistieron</div>
-            <div style="font-size:12px;color:#526b80;margin-top:5px">Cada DNI se cuenta una sola vez en la jornada</div>
+            <div style="font-size:17px;font-weight:700;color:#12395c;margin-top:8px">Asistentes del día</div>
           </td></tr></table>
       </td></tr></table>
       <h2 style="font-size:16px;margin:16px 5px 8px;color:#12395c">Acumulado y cobertura</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>{metric("DNI únicos acumulados",count(records),"Docentes distintos en todo el período")}{metric("Universo de docentes","3.853","Base de referencia")}</tr>
-      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} únicos de {total_expected} previstos")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr></table>
-      <div style="padding:9px 6px;font-size:12px;color:#526b80">Asistencia acumulada por jornada: <strong style="color:#092b56">{percent(cumulative,cumulative_expected).replace(".",",")}</strong> · Se suman DNI únicos de cada día; una persona puede asistir en días diferentes.</div>
+      <tr>{metric("Asistencia acumulada",count(records),"Personas distintas en todo el período")}{metric("Universo de docentes","3.853","Base de referencia")}</tr>
+      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} asistentes de {total_expected} previstos")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr></table>
+      <div style="padding:9px 6px;font-size:12px;color:#526b80">Asistencia acumulada por jornada: <strong style="color:#092b56">{percent(cumulative,cumulative_expected).replace(".",",")}</strong> · Se contabiliza cada asistente una vez por jornada; puede asistir en días diferentes.</div>
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia del día por turno</h2>
-      {bar_table(["Turno","DNI únicos","Cobertura"],shifts,2)}
+      {bar_table(["Turno","Asistentes","Cobertura"],shifts,2)}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Histórico de asistencia</h2>
       {history_html}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia por dependencia</h2>
-      {bar_table(["Dependencia","Hoy","Únicos acumulados","Cobertura"],dependencies,3)}
+      {bar_table(["Dependencia","Hoy","Acumulado","Cobertura"],dependencies,3)}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:19px;background:#edf4ff;border:1px solid #b8d1f2;border-radius:9px"><tr><td style="padding:12px 14px;font-size:12px">
       <strong>Detalle de asistentes · Excel protegido</strong><div style="margin-top:5px;color:#526b80">Adjunto cifrado con tres hojas: detalle nominal, por escuela y por área. La contraseña se entrega por separado.</div>
       </td></tr></table>
       <p style="font-size:12px;margin:15px 5px"><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html" style="color:#174e8a;font-weight:700">Abrir el tablero de asistencia</a></p>
+      <p style="font-size:11px;color:#526b80;margin:12px 5px 0"><strong>Nota metodológica:</strong> La asistencia se calcula en base a DNI únicos. Cada persona se cuenta una sola vez por jornada.</p>
       <p style="font-size:10px;color:#667c8e;margin:12px 5px 0">Reporte de prueba · Consulta de planillas en modo lectura · Datos sujetos a actualización</p>
     </td></tr></table></body></html>"""
 
