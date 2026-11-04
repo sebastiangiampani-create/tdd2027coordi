@@ -22,13 +22,22 @@ def at(r,i): return str(r[i]).strip() if len(r)>i else ""
 def norm(v): return unicodedata.normalize("NFKD",str(v)).encode("ascii","ignore").decode().lower().strip()
 def day(v):
     v=str(v).strip()
-    for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y"):
-        try: return datetime.strptime(v,fmt).date()
+    for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y","%d/%m/%Y %H:%M:%S","%d/%m/%Y %H:%M","%d/%m","%Y-%m-%d %H:%M:%S"):
+        try:
+            d=datetime.strptime(v,fmt).date()
+            return d.replace(year=2026) if fmt=="%d/%m" else d
         except ValueError: pass
     m=re.search(r"Date\((\d+),(\d+),(\d+)",v)
     if m:
         from datetime import date
         return date(int(m[1]),int(m[2])+1,int(m[3]))
+    m=re.match(r"^(\\d{1,2})[/.-](\\d{1,2})(?:[/.-](\\d{2,4}))?",v)
+    if m:
+        from datetime import date
+        y=int(m[3]) if m[3] else 2026
+        if y<100:y+=2000
+        try:return date(y,int(m[2]),int(m[1]))
+        except ValueError:pass
     return None
 
 def dep(v):
@@ -62,7 +71,10 @@ def main():
     if len(proposals)<2 or len(all_rows)<2: raise RuntimeError("Planillas sin datos o inaccesibles; no se envia.")
     records=[r for r in all_rows[1:] if at(r,1)]
     today=[r for r in records if day(at(r,13))==target]
-    if not today: raise RuntimeError("No hay registros de la fecha seleccionada; no se envia.")
+    if not today:
+        from collections import Counter
+        print("Diagnostic date values (no names):", Counter(at(r,13) for r in records).most_common(8))
+        raise RuntimeError("No hay registros reconocidos de la fecha seleccionada; no se envia.")
     weekday=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()]
     expected=PLANNED.get(weekday)
     total_expected=sum(expected) if expected else 0
