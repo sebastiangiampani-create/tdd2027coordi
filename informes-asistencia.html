@@ -81,7 +81,7 @@ function dateOnly(v){const s=clean(v);const m=s.match(/^(\d{1,2}\/\d{1,2}\/\d{4}
 function shift(v){const s=norm(v);if(!s)return 'Sin dato';if(s.includes('manana'))return 'Mañana';if(s.includes('tarde'))return 'Tarde';if(s.includes('vespert')||s.includes('noche'))return 'Vespertino';return clean(v)}
 function value(r,index){return index===14?shift(r[14]):index===13?dateOnly(r[13]||r[0]):clean(r[index])}
 function codeKey(v){return norm(v).replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')}
-function venueOf(r){const key=codeKey(r[10]),commission=codeKey(r[11]);return proposals.get(key+'|'+commission)||proposals.get(key)||'Sede sin identificar'}
+function venueOf(r){const key=codeKey(r[10]),commission=codeKey(r[11]);return proposals.get(key+'|'+commission)||proposals.get(key)||proposals.get('commission|'+commission)||'Sede sin identificar'}
 function joinVenues(){rows.forEach(r=>r[15]=venueOf(r));options()}
 function venueCounts(items){const m=new Map();for(const r of items){const name=r[15]||'Sede sin identificar';m.set(name,(m.get(name)||0)+1)}return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'))}
 function venueBreakdown(items){const box=document.createElement('div');box.className='venue-breakdown';for(const [name,count] of venueCounts(items)){const line=document.createElement('div');line.className='venue-line';const n=document.createElement('span');n.textContent=name;const v=document.createElement('strong');v.textContent=count;line.append(n,v);box.append(line)}return box}
@@ -260,36 +260,42 @@ $('print').addEventListener('click',()=>window.print());
 $('export').addEventListener('click',()=>{if(typeof XLSX==='undefined'){alert('No se pudo cargar la librería de Excel');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HEAD,...filtered]),'Asistencias');XLSX.writeFile(wb,'informe_asistencia_TDD2027.xlsx')});
 const SHEET_ID='1hznlu4j_Ip4KqYNpMrdhvbJvnHrPl0hOIJ6qBOsTRb4';
 function loadProposals(){
- const callback='tdd_proposals_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let timer,finished=false;
- function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}
- function done(message){if(finished)return;finished=true;cleanup();proposalsLoaded=proposals.size>0;joinVenues();$('status').textContent=message||('Datos actualizados: '+rows.length+' registros · '+countUnique(rows)+' DNI únicos. '+proposals.size+' referencias de sede cargadas desde Propuestas.')}
- window[callback]=res=>{
-  if(res.status==='error'||!res.table){done('Asistencias disponibles; no se pudieron leer las sedes de Propuestas.');return}
-  const cols=(res.table.cols||[]).map(x=>norm(x.label||x.id));
-  const data=res.table.rows||[];
-  const headerRow=data.length?data[0].c||[]:[];
-  const first=headerRow.map(x=>norm(cellValue(x)));
-  const find=(names,defaultIndex)=>{let i=cols.findIndex(x=>names.includes(x));if(i<0)i=first.findIndex(x=>names.includes(x));return i>=0?i:defaultIndex};
-  const ci=find(['codigo','cod','codigo de propuesta','codigo de capacitacion'],0);
-  const vi=find(['sede','sede de capacitacion','lugar de capacitacion','lugar','sede / lugar'],7);
-  const mi=find(['comision','comision nro','numero de comision'],1);
-  const map=new Map(),byCode=new Map();
-  for(const row of data){
-   const cells=row.c||[],key=codeKey(cellValue(cells[ci])),commission=codeKey(cellValue(cells[mi])),venue=clean(cellValue(cells[vi]));
-   if(!key||!venue||['sede','sede de capacitacion'].includes(norm(venue))||['codigo','cod'].includes(key))continue;
-   if(commission)map.set(key+'|'+commission,venue);
-   if(!byCode.has(key))byCode.set(key,new Set());
-   byCode.get(key).add(venue);
-  }
-  for(const [key,venues] of byCode){if(venues.size===1)map.set(key,[...venues][0])}
-  if(map.size)proposals=map;
-  done(map.size?'':'No se encontraron sedes válidas en Propuestas. Revisar encabezados y permisos de lectura.');
- };
- tag.onerror=()=>done('Asistencias disponibles; no se pudo cargar Propuestas.');
- timer=setTimeout(()=>done('Asistencias disponibles; la carga de Propuestas tardó demasiado.'),25000);
- tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'0',range:'A:S',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
- document.head.append(tag)
+ const sources=[{sheet:'Propuestas'},{gid:'0'}];let attempt=0;
+ function next(lastError){
+  if(attempt>=sources.length){proposalsLoaded=false;joinVenues();showVenueStatus('No se pudieron recuperar las sedes desde Propuestas. '+(lastError||'Verificá el acceso a la hoja.'));return}
+  const source=sources[attempt++],callback='tdd_proposals_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let finished=false,timer;
+  function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}
+  function fail(message){if(finished)return;finished=true;cleanup();next(message)}
+  window[callback]=res=>{
+   if(finished)return;
+   if(res.status==='error'||!res.table){fail('Google Sheets rechazó la consulta.');return}
+   const cols=(res.table.cols||[]).map(x=>norm(x.label||x.id));
+   const find=(names,fallback)=>{const idx=cols.findIndex(x=>names.some(n=>x===n||x.startsWith(n+' ')));return idx>=0?idx:fallback};
+   const ci=find(['codigo','cod'],0),mi=find(['comision'],1),vi=find(['sede','sede de capacitacion'],7);
+   const byCode=new Map(),byPair=new Map(),byCommission=new Map();
+   for(const row of res.table.rows||[]){
+    const cells=row.c||[],code=codeKey(cellValue(cells[ci])),commission=codeKey(cellValue(cells[mi])),venue=clean(cellValue(cells[vi]));
+    if(!code||!venue||norm(venue)==='sede'||code==='codigo')continue;
+    if(!byCode.has(code))byCode.set(code,new Set());
+    byCode.get(code).add(venue);
+    if(commission){byPair.set(code+'|'+commission,venue);if(!byCommission.has(commission))byCommission.set(commission,new Set());byCommission.get(commission).add(venue)}
+   }
+   if(!byCode.size){fail('La consulta no devolvió códigos y sedes válidos.');return}
+   const map=new Map(byPair);
+   for(const [code,venues] of byCode)if(venues.size===1)map.set(code,[...venues][0]);
+   for(const [commission,venues] of byCommission)if(venues.size===1)map.set('commission|'+commission,[...venues][0]);
+   finished=true;cleanup();proposals=map;proposalsLoaded=true;joinVenues();
+   const missing=rows.filter(r=>r[15]==='Sede sin identificar');
+   showVenueStatus(missing.length?'Sedes recuperadas: '+(rows.length-missing.length)+' de '+rows.length+' asistencias. Sin identificar: '+missing.length+' (códigos: '+[...new Set(missing.map(r=>clean(r[10])))].slice(0,8).join(', ')+').':'Sedes recuperadas para las '+rows.length+' asistencias.');
+  };
+  tag.onerror=()=>fail('No se pudo leer la pestaña Propuestas.');
+  timer=setTimeout(()=>fail('La consulta de sedes excedió el tiempo de espera.'),12000);
+  tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({...source,range:'A:S',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
+  document.head.append(tag)
+ }
+ next()
 }
+function showVenueStatus(message){let el=$('venueStatus');if(!el){el=document.createElement('p');el.id='venueStatus';el.className='summary-note';const dateCards=$('dateCards');dateCards.parentElement.insertBefore(el,dateCards)}el.textContent=message}
 function cellValue(c){if(!c)return '';if(c.f!=null)return clean(c.f);if(c.v==null)return '';if(typeof c.v==='string'&&c.v.startsWith('Date(')){const m=c.v.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?/);if(m)return String(m[3]).padStart(2,'0')+'/'+String(Number(m[2])+1).padStart(2,'0')+'/'+m[1]+(m[4]!=null?' '+String(m[4]).padStart(2,'0')+':'+String(m[5]).padStart(2,'0')+':'+String(m[6]).padStart(2,'0'):'')}return clean(c.v)}
 function load(){const status=$('status');status.textContent='Consultando Google Sheets…';const callback='tdd_assist_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let timer;
 function cleanup(){clearTimeout(timer);tag.remove();delete window[callback]}
@@ -299,7 +305,7 @@ const cols=(res.table.cols||[]).map(x=>norm(x.label||x.id));const aliases={'dep.
 const indexes=HEAD.map((h,i)=>{if(i>=13)return i;const opts=[norm(h),...(aliases[norm(h)]||[])];const found=cols.findIndex((v,j)=>j<13&&opts.includes(v));return found>=0?found:i});
 if(cols.length<15){status.textContent='La hoja respondió con '+cols.length+' columnas; se esperaban 15';return}
 rows=(res.table.rows||[]).map(r=>indexes.map(i=>cellValue((r.c||[])[i]))).filter(r=>r.some(Boolean));rows.forEach(r=>r[15]=venueOf(r));
-options();status.textContent='Datos actualizados: '+rows.length+' registros · '+countUnique(rows)+' DNI únicos. Solo lectura.'+(proposalsLoaded?' Sedes cruzadas con Propuestas.':' Cargando sedes…')};
+options();if(proposalsLoaded)showVenueStatus('Sedes recuperadas: '+rows.filter(r=>r[15]!=='Sede sin identificar').length+' de '+rows.length+' asistencias.');status.textContent='Datos actualizados: '+rows.length+' registros · '+countUnique(rows)+' DNI únicos. Solo lectura.'+(proposalsLoaded?' Sedes cruzadas con Propuestas.':' Cargando sedes…')};
 tag.onerror=()=>fail('No se pudo leer la pestaña Asistencias desde este sitio.');
 timer=setTimeout(()=>fail('La consulta tardó demasiado. Probá actualizar.'),25000);
 tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'87091997',range:'A:O',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
