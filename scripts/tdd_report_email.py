@@ -171,9 +171,12 @@ def main():
         area[(at(r,9),at(r,7))].add(at(r,1))
     school_summary=[[s,a,len(ids)] for (s,a),ids in sorted(school.items())]
     area_summary=[[a,s,len(ids)] for (a,s),ids in sorted(area.items())]
-    def metric(label,value,sub):
-        return (f'<td width="50%" valign="top" style="padding:5px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#edf3f8;border:1px solid #dce5ed;border-radius:11px">'
-                f'<tr><td style="padding:13px 14px"><div style="font-size:27px;font-weight:700;color:#092b56">{value}</div><div style="font-size:12px;color:#12395c;margin-top:4px">{label}</div><div style="font-size:10px;color:#526b80;margin-top:5px">{sub}</div></td></tr></table></td>')
+    def metric(label,value,sub,featured=False):
+        size=44 if featured else 30
+        bg="#d8e9ff" if featured else "#edf3f8"
+        border="#8bb4e0" if featured else "#dce5ed"
+        return (f'<td width="50%" valign="top" style="padding:5px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{bg};border:1px solid {border};border-radius:11px">'
+                f'<tr><td style="padding:17px 14px"><div style="font-size:{size}px;line-height:1.1;font-weight:700;color:#092b56">{value}</div><div style="font-size:14px;font-weight:700;color:#12395c;margin-top:8px">{label}</div><div style="font-size:11px;color:#526b80;margin-top:5px">{sub}</div></td></tr></table></td>')
     def bar_table(headers,records,rate_index):
         out='<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:12px">'
         out+='<tr>'+''.join(f'<th align="left" style="padding:8px 7px;background:#eaf1f7;color:#12395c;border-bottom:1px solid #dce5ed">{escape(str(x))}</th>' for x in headers)+'</tr>'
@@ -203,14 +206,18 @@ def main():
       <div style="font-size:13px;color:#526b80">{weekday} {target.strftime('%d/%m/%Y')} · Actualizado {datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).strftime('%H:%M')} h</div>
     </td></tr>
     <tr><td style="padding:8px 15px 18px">
+      <h2 style="font-size:16px;margin:6px 5px 8px;color:#12395c">Asistencia del día</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>{metric("Registros del día",len(today),"Asistencias registradas")}{metric("Docentes únicos del día",count(today),"DNI sin duplicados en la jornada")}</tr>
-      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} únicos de {total_expected} previstos")}{metric("Docentes únicos acumulados",count(records),f"{percent(count(records),3853).replace('.',',')} del universo de 3.853")}</tr></table>
-      <div style="padding:7px 6px;font-size:12px;color:#526b80">Asistencia acumulada: <strong style="color:#092b56">{percent(cumulative,cumulative_expected).replace(".",",")}</strong> · Registros acumulados: <strong>{len(records)}</strong></div>
-      <h2 style="font-size:16px;margin:17px 5px 8px;color:#12395c">Histórico de asistencia</h2>
+      <tr>{metric("Asistencias del día",len(today),"Registros de la jornada",True)}{metric("DNI únicos del día",count(today),"Docentes sin duplicar en la fecha",True)}</tr></table>
+      <h2 style="font-size:16px;margin:16px 5px 8px;color:#12395c">Acumulado y cobertura</h2>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>{metric("DNI únicos acumulados",count(records),"Universo: 3.853 docentes")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr>
+      <tr>{metric("Cobertura de la jornada",percent(count(today),total_expected).replace(".",","),f"{count(today)} únicos de {total_expected} previstos")}{metric("Asistencia acumulada",percent(cumulative,cumulative_expected).replace(".",","),f"{cumulative} asistencias diarias únicas de {cumulative_expected} previstas")}</tr></table>
+      <div style="padding:7px 6px;font-size:11px;color:#526b80">Registros acumulados: <strong>{len(records)}</strong> · Los DNI únicos se cuentan una vez en el período indicado.</div>
+      <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia del día por turno</h2>
+      {bar_table(["Turno","Registros","DNI únicos","Cobertura"],shifts,3)}
+      <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Histórico de asistencia</h2>
       {history_html}
-      <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia por turno</h2>
-      {bar_table(["Turno","Registros","Únicos","Cobertura"],shifts,3)}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia por dependencia</h2>
       {bar_table(["Dependencia","Hoy","Únicos acumulados","Cobertura"],dependencies,3)}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:19px;background:#edf4ff;border:1px solid #b8d1f2;border-radius:9px"><tr><td style="padding:12px 14px;font-size:12px">
@@ -223,7 +230,7 @@ def main():
     message=EmailMessage()
     message["From"]=EMAIL;message["To"]=EMAIL
     message["Subject"]=f"[PRUEBA] TDD 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
-    message.set_content("Reporte de TDD 2027 en formato HTML con dos archivos adjuntos.")
+    message.set_content("Reporte de TDD 2027 en formato HTML con un archivo Excel cifrado adjunto.")
     message.add_alternative(html,subtype="html")
     # Gmail no renderiza SVG de forma fiable: convertir los logos del portal a PNG
     # e incrustarlos como imagenes relacionadas (CID), sin depender de enlaces externos.
