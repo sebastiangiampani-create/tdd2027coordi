@@ -128,6 +128,28 @@ def main():
     dates={day(at(r,13)) for r in records if day(at(r,13))}
     cumulative=sum(count([r for r in records if day(at(r,13))==d]) for d in dates)
     cumulative_expected=sum(sum(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[])) for d in dates)
+    history=[]
+    for d in sorted(dates):
+        label=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()]
+        plan=PLANNED.get(label)
+        if not plan: continue
+        group=[r for r in records if day(at(r,13))==d]
+        history.append((d,len(group),count(group),sum(plan)))
+    history_html='<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
+    for i,(d,registered,people,planned) in enumerate(history):
+        rate=100*people/planned if planned else 0
+        if i and i%3==0: history_html+='</tr><tr>'
+        history_html+=(
+            '<td valign="top" width="33%" style="padding:4px">'
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#edf4fc;border:1px solid #c6d8ee;border-radius:7px">'
+            f'<tr><td align="center" style="padding:12px 5px;color:#153e70;font-size:12px">{d.strftime("%d/%m")}</td></tr>'
+            f'<tr><td align="center" style="font-size:24px;font-weight:bold;color:#153e70">{registered}</td></tr>'
+            '<tr><td align="center" style="font-size:11px;padding:4px">registros</td></tr>'
+            f'<tr><td style="padding:8px 7px"><strong style="font-size:15px">{percent(people,planned)}</strong>'
+            f'<div style="background:#c6d8ee;height:6px;border-radius:4px"><div style="background:#2677bd;height:6px;width:{min(100,rate):.1f}%;border-radius:4px"></div></div>'
+            f'<div style="font-size:10px;padding-top:5px">{people} únicos de {planned} previstos</div></td></tr></table></td>'
+        )
+    history_html+='</tr></table>'
     shifts=[]
     for i,name in enumerate(SHIFTS):
         rs=[r for r in today if norm(at(r,14))==norm(name)]
@@ -156,6 +178,7 @@ def main():
     <tr><td style="background:#edf4fc"><strong style="font-size:26px">{percent(count(today),total_expected)}</strong><br><small>Cobertura del día</small></td>
     <td style="background:#edf4fc"><strong style="font-size:26px">{count(records)}</strong><br><small>Docentes únicos acumulados</small></td></tr></table>
     <p style="font-size:13px;color:#566b83">Universo: 3.853 docentes · Cobertura del universo: {percent(count(records),3853)} · Asistencia acumulada: {percent(cumulative,cumulative_expected)}</p>
+    <h2 style="font-size:17px">Histórico de asistencia</h2>{history_html}
     <h2 style="font-size:17px">Por turno</h2>{table(["Turno","Registros","Unicos","Cobertura"],shifts)}
     <h2 style="font-size:17px;margin-top:18px">Por dependencia</h2>{table(["Dependencia","Hoy","Unicos acumulados","Cobertura"],dependencies)}
     <p style="font-size:13px;margin-top:20px"><strong>Detalle nominal:</strong> archivo Excel cifrado adjunto, con tres hojas (detalle, escuela y área). La contraseña se comunica por separado.</p>
