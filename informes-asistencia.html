@@ -81,7 +81,7 @@ function dateOnly(v){const s=clean(v);const m=s.match(/^(\d{1,2}\/\d{1,2}\/\d{4}
 function shift(v){const s=norm(v);if(!s)return 'Sin dato';if(s.includes('manana'))return 'Mañana';if(s.includes('tarde'))return 'Tarde';if(s.includes('vespert')||s.includes('noche'))return 'Vespertino';return clean(v)}
 function value(r,index){return index===14?shift(r[14]):index===13?dateOnly(r[13]||r[0]):clean(r[index])}
 function codeKey(v){return norm(v).replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')}
-function venueOf(r){const key=codeKey(r[10]),commission=codeKey(r[11]);return proposals.get(key+'|'+commission)||proposals.get(key)||proposals.get('commission|'+commission)||'Sede sin identificar'}
+function venueOf(r){const key=codeKey(r[10]),commission=codeKey(r[11]);return proposals.get(key+'|'+commission)||proposals.get(key)||'Sede sin identificar'}
 function joinVenues(){rows.forEach(r=>r[15]=venueOf(r));options()}
 function venueCounts(items){const m=new Map();for(const r of items){const name=r[15]||'Sede sin identificar';m.set(name,(m.get(name)||0)+1)}return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'))}
 function venueBreakdown(items){const box=document.createElement('div');box.className='venue-breakdown';for(const [name,count] of venueCounts(items)){const line=document.createElement('div');line.className='venue-line';const n=document.createElement('span');n.textContent=name;const v=document.createElement('strong');v.textContent=count;line.append(n,v);box.append(line)}return box}
@@ -274,10 +274,10 @@ function loadProposals(){
    const cols=(res.table.cols||[]).map(x=>norm(x.label||x.id));
    const find=(names,fallback)=>{const idx=cols.findIndex(x=>names.some(n=>x===n||x.startsWith(n+' ')));return idx>=0?idx:fallback};
    const ci=find(['codigo','cod'],0),mi=find(['comision'],1),vi=find(['sede','sede de capacitacion'],7);
-   const byCode=new Map(),byPair=new Map(),byCommission=new Map();
+   const byCode=new Map(),byPair=new Map(),byCommission=new Map(),sourceVenues=new Set();
    for(const row of res.table.rows||[]){
     const cells=row.c||[],code=codeKey(cellValue(cells[ci])),commission=codeKey(cellValue(cells[mi])),venue=clean(cellValue(cells[vi]));
-    if(!code||!venue||norm(venue)==='sede'||code==='codigo')continue;
+    if(!code||!venue||norm(venue)==='sede'||code==='codigo')continue;sourceVenues.add(venue);
     if(!byCode.has(code))byCode.set(code,new Set());
     byCode.get(code).add(venue);
     if(commission){byPair.set(code+'|'+commission,venue);if(!byCommission.has(commission))byCommission.set(commission,new Set());byCommission.get(commission).add(venue)}
@@ -285,10 +285,13 @@ function loadProposals(){
    if(!byCode.size){fail('La consulta devolvió '+(res.table.rows||[]).length+' filas sin códigos/sedes válidos. Encabezados: '+cols.slice(0,9).join(' / '));return}
    const map=new Map(byPair);
    for(const [code,venues] of byCode)if(venues.size===1)map.set(code,[...venues][0]);
-   for(const [commission,venues] of byCommission)if(venues.size===1)map.set('commission|'+commission,[...venues][0]);
+   
    finished=true;cleanup();proposals=map;proposalsLoaded=true;joinVenues();
    const missing=rows.filter(r=>r[15]==='Sede sin identificar');
-   showVenueStatus(missing.length?'Sedes recuperadas: '+(rows.length-missing.length)+' de '+rows.length+' asistencias. Sin identificar: '+missing.length+' (códigos: '+[...new Set(missing.map(r=>clean(r[10])))].slice(0,8).join(', ')+').':'Sedes recuperadas para las '+rows.length+' asistencias.');
+   const matchedVenues=[...new Set(rows.filter(r=>r[15]!=='Sede sin identificar').map(r=>r[15]))];
+   const sourceCodes=[...byCode.keys()],attendanceCodes=[...new Set(rows.map(r=>codeKey(r[10])).filter(Boolean))];
+   const unmatched=attendanceCodes.filter(k=>!byCode.has(k));
+   showVenueStatus('Propuestas: '+(res.table.rows||[]).length+' filas, '+sourceCodes.length+' códigos, '+sourceVenues.size+' sedes distintas. Asistencias: '+attendanceCodes.length+' códigos; '+(rows.length-missing.length)+' registros con sede, '+missing.length+' sin identificar; '+matchedVenues.length+' sedes visibles. '+(unmatched.length?'Códigos sin cruce ('+unmatched.length+'): '+unmatched.slice(0,12).join(', ')+'.':'Todos los códigos están en Propuestas.')+' '+(sourceVenues.size===1?'ATENCIÓN: Propuestas devuelve una sola sede distinta.':'') );
   };
   tag.onerror=()=>fail('No se pudo leer la pestaña Propuestas.');
   timer=setTimeout(()=>fail('La consulta de sedes excedió el tiempo de espera.'),12000);
