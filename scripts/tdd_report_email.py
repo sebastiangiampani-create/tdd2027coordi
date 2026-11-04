@@ -232,6 +232,7 @@ def main():
       <p style="font-size:12px;margin:15px 5px"><a href="https://sebastiangiampani-create.github.io/tdd2027coordi/informes-asistencia.html" style="color:#174e8a;font-weight:700">Abrir el tablero de asistencia</a></p>
       <p style="font-size:11px;color:#526b80;margin:12px 5px 0"><strong>Nota metodológica:</strong> La asistencia se calcula en base a DNI únicos. Cada persona se cuenta una sola vez por jornada.</p>
       <p style="font-size:10px;color:#667c8e;margin:12px 5px 0">Reporte de prueba · Consulta de planillas en modo lectura · Datos sujetos a actualización</p>
+      <p style="font-size:10px;color:#667c8e;margin:8px 5px 0;text-align:center">Reporte de asistencia creado y diseñado por Sebastian Giampani</p>
     </td></tr><tr><td style="background:#153e70;padding:17px 20px;text-align:center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="42%" align="left" valign="middle"><img src="cid:em_footer_logo" alt="Escuela de Maestros" width="145" style="display:block;width:145px;max-width:100%;height:auto;border:0"></td><td width="58%" align="right" valign="middle"><img src="cid:ministerio_logo" alt="Ministerio de Educación · Buenos Aires Ciudad" width="225" style="display:block;width:225px;max-width:100%;height:auto;border:0;margin-left:auto"></td></tr></table></td></tr></table></body></html>"""
 
     message=EmailMessage()
