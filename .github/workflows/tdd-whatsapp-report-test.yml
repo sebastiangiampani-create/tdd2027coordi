@@ -6,6 +6,14 @@ on:
         description: "Fecha del informe AAAA-MM-DD (vacio = hoy en Buenos Aires)"
         required: false
         type: string
+      modo:
+        description: "Validar PDF sin enviar (recomendado) o enviar por WhatsApp"
+        required: true
+        default: validar
+        type: choice
+        options:
+          - validar
+          - enviar
       alcance:
         description: "Corte acumulativo: tm (12:00), tm_tt (17:00), general (20:15)"
         required: true
@@ -27,11 +35,20 @@ jobs:
         run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email.py
       - name: Instalar dependencias del PDF visual
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
-      - name: Enviar PDF solo a destinatario de prueba
+      - name: Generar informe y opcionalmente enviar a destinatario de prueba
         env:
           TDD_WA_ACCESS_TOKEN: ${{ secrets.TDD_WA_ACCESS_TOKEN }}
           TDD_WA_PHONE_NUMBER_ID: ${{ secrets.TDD_WA_PHONE_NUMBER_ID }}
           TDD_WA_TEST_RECIPIENT: ${{ secrets.TDD_WA_TEST_RECIPIENT }}
           REPORT_DATE: ${{ inputs.fecha }}
           REPORT_SCOPE: ${{ inputs.alcance }}
+          REPORT_DRY_RUN: ${{ inputs.modo == 'validar' && '1' || '0' }}
         run: python3 scripts/tdd_whatsapp_report.py
+      - name: Guardar PDF y mensaje para revisar
+        if: ${{ inputs.modo == 'validar' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-tdd-${{ inputs.alcance }}-${{ inputs.fecha || 'hoy' }}
+          path: report-output/
+          if-no-files-found: error
+          retention-days: 7
