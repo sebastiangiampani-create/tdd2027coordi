@@ -369,7 +369,9 @@ def main():
     </td></tr><tr><td style="background:#153e70;padding:17px 20px;text-align:center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td width="42%" align="left" valign="middle"><img src="cid:em_footer_logo" alt="Escuela de Maestros" width="145" style="display:block;width:145px;max-width:100%;height:auto;border:0"></td><td width="58%" align="right" valign="middle"><img src="cid:ministerio_logo" alt="Ministerio de Educación · Buenos Aires Ciudad" width="225" style="display:block;width:225px;max-width:100%;height:auto;border:0;margin-left:auto"></td></tr></table></td></tr></table></body></html>"""
 
     message=EmailMessage()
-    message["From"]=EMAIL;message["To"]=", ".join(recipients())
+    message["From"]=EMAIL
+    message["To"]=EMAIL
+    message["Bcc"]=", ".join(addr for addr in recipients() if addr != EMAIL)
     message["Subject"]=f"Talleres de diseño 2027 - Informe de asistencia {target.strftime('%d/%m/%Y')}"
     message.set_content(f"Se comparte el informe de asistencia correspondiente a los Talleres de Diseño 2027 del dia {target.strftime('%d/%m/%Y')}. Se adjuntan el PDF visual y el Excel nominal cifrado.")
     message.add_alternative(html,subtype="html")
@@ -390,6 +392,6 @@ def main():
     with smtplib.SMTP_SSL("smtp.gmail.com",465,context=ssl.create_default_context(),timeout=30) as smtp:
         smtp.login(EMAIL,password)
         smtp.send_message(message)
-    print(f"Informe enviado a {len(recipients())} destinatarios principales; {count(today)} DNI unicos para {target.isoformat()}")
+    print(f"Informe enviado a {EMAIL} y {len(recipients())-1} destinatarios en CCO; {count(today)} DNI unicos para {target.isoformat()}")
 
 if __name__=="__main__": main()
