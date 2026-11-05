@@ -111,7 +111,7 @@ function renderDependencies(selected){
 function renderSummary(){
  const data=rows.filter(r=>FILTERS.every(([id,,index])=>id==='fDate'||!$(id).value||value(r,index)===$(id).value)&&(!$('searchPeople').value||norm(r.join(' ')).includes(norm($('searchPeople').value))));
  const dates=new Map();
- for(const r of data){const d=dateOnly(r[13]||r[0])||'Sin fecha';if(!dates.has(d))dates.set(d,{Mañana:0,Tarde:0,Vespertino:0,'Sin dato':0,Total:0});const obj=dates.get(d),s=shift(r[14]);obj[s in obj?s:'Sin dato']++;obj.Total++}
+ for(const r of data){const d=dateOnly(r[13]||r[0])||'Sin fecha';if(!dates.has(d))dates.set(d,{Mañana:new Set(),Tarde:new Set(),Vespertino:new Set(),'Sin dato':new Set(),Total:new Set()});const obj=dates.get(d),turn=shift(r[14]),id=dni(r);if(!id)continue;obj[turn in obj?turn:'Sin dato'].add(id);obj.Total.add(id)}
  const sorted=[...dates.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es',{numeric:true}));
  const selected=$('fDate').value||sorted[0]?.[0];
  const buttons=document.createDocumentFragment();
