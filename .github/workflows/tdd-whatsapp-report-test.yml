@@ -6,6 +6,15 @@ on:
         description: "Fecha del informe AAAA-MM-DD (vacio = hoy en Buenos Aires)"
         required: false
         type: string
+      alcance:
+        description: "Corte acumulativo: tm (12:00), tm_tt (17:00), general (20:15)"
+        required: true
+        default: general
+        type: choice
+        options:
+          - tm
+          - tm_tt
+          - general
 permissions:
   contents: read
 jobs:
@@ -22,4 +31,5 @@ jobs:
           TDD_WA_PHONE_NUMBER_ID: ${{ secrets.TDD_WA_PHONE_NUMBER_ID }}
           TDD_WA_TEST_RECIPIENT: ${{ secrets.TDD_WA_TEST_RECIPIENT }}
           REPORT_DATE: ${{ inputs.fecha }}
+          REPORT_SCOPE: ${{ inputs.alcance }}
         run: python3 scripts/tdd_whatsapp_report.py
