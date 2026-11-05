@@ -1,4 +1,4 @@
-name: TDD 2027 - Informes de asistencia por correo (CCO)
+name: TDD 2027 - Informes HTML por correo (CCO)
 on:
   schedule:
     - cron: '0 15 * * 1-5'   # 12:00 Argentina
@@ -48,8 +48,9 @@ jobs:
       - name: Enviar informe por correo en CCO
         if: ${{ github.event_name == 'schedule' || inputs.modo == 'enviar' }}
         env:
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
-        run: python3 scripts/tdd_report_email_brief.py
+        run: python3 scripts/tdd_report_email.py
       - name: Guardar informe de validacion
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.modo == 'validar' }}
         uses: actions/upload-artifact@v4
