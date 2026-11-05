@@ -53,7 +53,8 @@ def main():
     token=os.environ.get("TDD_WA_ACCESS_TOKEN","").strip()
     phone_id=os.environ.get("TDD_WA_PHONE_NUMBER_ID","").strip()
     dry_run=os.environ.get("REPORT_DRY_RUN","").strip().lower() in {"1","true","yes"}
-    raw_recipients=os.environ.get("TDD_WA_RECIPIENTS","").strip() or os.environ.get("TDD_WA_TEST_RECIPIENT","").strip()
+    test_only=os.environ.get("REPORT_TEST_ONLY","").strip().lower() in {"1","true","yes"}
+    raw_recipients=(os.environ.get("TDD_WA_TEST_RECIPIENT","").strip() if test_only else (os.environ.get("TDD_WA_RECIPIENTS","").strip() or os.environ.get("TDD_WA_TEST_RECIPIENT","").strip()))
     recipients=list(dict.fromkeys(re.sub(r"\\D","",item) for item in re.split(r"[,;\\s]+",raw_recipients) if item.strip()))
     if not dry_run and (not token or not phone_id.isdigit()):
         raise RuntimeError("Faltan secrets TDD_WA_ACCESS_TOKEN o TDD_WA_PHONE_NUMBER_ID")
