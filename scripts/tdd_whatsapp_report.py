@@ -117,7 +117,11 @@ def main():
     if dry_run:
         print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del periodo {unique_period}.")
         return
-    send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
+    accepted=0
+    failures=[]
+    for index,recipient in enumerate(recipients,1):
+        try:
+            send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
             accepted+=1
         except RuntimeError as exc:
             failures.append((index,str(exc)))
