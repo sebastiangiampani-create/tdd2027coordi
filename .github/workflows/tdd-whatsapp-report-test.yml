@@ -1,4 +1,4 @@
-name: TDD 2027 - Informes de asistencia por WhatsApp
+name: TDD 2027 - Piloto WhatsApp solo destinatario de prueba
 on:
   schedule:
     # Argentina UTC-3, lunes a viernes. GitHub puede iniciar con demora.
@@ -45,6 +45,7 @@ jobs:
           TDD_WA_ACCESS_TOKEN: ${{ secrets.TDD_WA_ACCESS_TOKEN }}
           TDD_WA_PHONE_NUMBER_ID: ${{ secrets.TDD_WA_PHONE_NUMBER_ID }}
           TDD_WA_TEST_RECIPIENT: ${{ secrets.TDD_WA_TEST_RECIPIENT }}
+          REPORT_TEST_ONLY: "1"
           REPORT_DATE: ${{ inputs.fecha }}
           REPORT_SCOPE: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 15 * * 1-5' && 'tm' || github.event.schedule == '0 20 * * 1-5' && 'tm_tt' || 'general') || inputs.alcance }}
           REPORT_DRY_RUN: ${{ github.event_name == 'schedule' && '0' || (inputs.modo == 'validar' && '1' || '0') }}
