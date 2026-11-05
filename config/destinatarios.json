@@ -31,6 +31,10 @@
     {
       "email": "coordinacionsecundaria.edm@bue.edu.ar",
       "activo": true
+    },
+    {
+      "email": "c.cecchi@bue.edu.ar",
+      "activo": true
     }
   ]
 }
