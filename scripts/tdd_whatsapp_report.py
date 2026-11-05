@@ -99,8 +99,8 @@ def main():
         f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
         f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
         f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
-        daily_section
-        "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
+        + daily_section
+        + "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
         f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
         "📎 *Informe visual en PDF adjunto*\n"
