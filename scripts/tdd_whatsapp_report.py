@@ -80,11 +80,25 @@ def main():
     caption=(
         f"📍 *INFORME DE ASISTENCIA · TURNO {current_shift.upper()}*\n\n"
         f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n\n"
-        f"{icons[current_shift]} *ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
-        f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
-        f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
-        f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
     )
+    if scope=="general":
+        # El cierre vespertino muestra los tres turnos, sin duplicar el acumulado.
+        for i,name in enumerate(SHIFTS):
+            actual=count([r for r in today if norm(at(r,14))==norm(name)])
+            expected=plan[i] if i<len(plan) else 0
+            caption+=(
+                f"{icons[name]} *ASISTENCIA DEL TURNO {name.upper()}*\n"
+                f"👥 *Docentes asistentes:* {fmt(actual)}\n"
+                f"📋 *Docentes previstos:* {fmt(expected)}\n"
+                f"📈 *Porcentaje:* {pct(actual,expected)}\n\n"
+            )
+    else:
+        caption+=(
+            f"{icons[current_shift]} *ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
+            f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
+            f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
+            f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
+        )
     caption += (
         "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
