@@ -1,0 +1,59 @@
+name: TDD 2027 - Informes de asistencia por correo (CCO)
+on:
+  schedule:
+    - cron: '0 15 * * 1-5'   # 12:00 Argentina
+    - cron: '0 20 * * 1-5'   # 17:00 Argentina
+    - cron: '45 22 * * 1-5'  # 19:45 Argentina
+  workflow_dispatch:
+    inputs:
+      fecha:
+        description: 'Fecha AAAA-MM-DD; vacio = hoy Argentina'
+        required: false
+        type: string
+      alcance:
+        description: 'Turno del informe'
+        required: true
+        default: general
+        type: choice
+        options:
+          - tm
+          - tm_tt
+          - general
+      modo:
+        description: 'Validar sin enviar o enviar email'
+        required: true
+        default: validar
+        type: choice
+        options:
+          - validar
+          - enviar
+permissions:
+  contents: read
+jobs:
+  informe-email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar scripts
+        run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py
+      - name: Instalar dependencias
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
+      - name: Generar informe sin enviar WhatsApp
+        env:
+          REPORT_DRY_RUN: "1"
+          REPORT_DATE: ${{ inputs.fecha }}
+          REPORT_SCOPE: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 15 * * 1-5' && 'tm' || github.event.schedule == '0 20 * * 1-5' && 'tm_tt' || 'general') || inputs.alcance }}
+        run: python3 scripts/tdd_whatsapp_report.py
+      - name: Enviar informe por correo en CCO
+        if: ${{ github.event_name == 'schedule' || inputs.modo == 'enviar' }}
+        env:
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+        run: python3 scripts/tdd_report_email_brief.py
+      - name: Guardar informe de validacion
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.modo == 'validar' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-email-tdd
+          path: report-output/mensaje.txt
+          retention-days: 7
