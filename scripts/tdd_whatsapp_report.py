@@ -66,6 +66,12 @@ def main():
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
     expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in included and i<len(plan))
     audience_label={"tm":"del turno mañana","tm_tt":"de los turnos mañana y tarde","general":"de la jornada completa"}[scope]
+    prior=[r for r in records if day(at(r,13)) and day(at(r,13))<=target]
+    unique_period=count(prior)
+    daily_groups={d for r in prior if (d:=day(at(r,13)))}
+    attendance_encounters=sum(count([r for r in prior if day(at(r,13))==d]) for d in daily_groups)
+    expected_encounters=sum(sum(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[])) for d in daily_groups)
+    shift_breakdown="".join(f"  • {name}: {count([r for r in today if norm(at(r,14))==norm(name)])} de {plan[i] if i<len(plan) else 0} previstos\\n" for i,name in enumerate(SHIFTS) if name in included)
     caption=(
         "*TALLERES DE DISEÑO 2027*\n"
         f"*Informe de asistencia · {labels[scope]}*\n\n"
@@ -73,6 +79,10 @@ def main():
         f"👥 *Asistentes {audience_label}:* {count(today)} personas (DNI únicos)\n"
         f"📊 *Previstos:* {expected}\n"
         f"📈 *Asistencia:* {percent(count(today),expected)}\n\n"
+        f"*Detalle por turno:*\n{shift_breakdown}\n"
+        f"*Acumulado del período (hasta {target.strftime('%d/%m')}):*\n"
+        f"• Docentes distintos: {unique_period} de 3.853 ({percent(unique_period,3853)})\n"
+        f"• Asistencias por jornada: {attendance_encounters} de {expected_encounters} previstas ({percent(attendance_encounters,expected_encounters)})\n\n"
         "📎 *Adjunto:* informe visual en PDF\n"
         "_Sin datos nominales de participantes._\n\n"
         "Escuela de Maestros · Ministerio de Educación"
