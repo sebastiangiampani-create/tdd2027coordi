@@ -1,5 +1,10 @@
-name: TDD 2027 - Informe de texto por WhatsApp (prueba manual)
+name: TDD 2027 - Informes de asistencia por WhatsApp
 on:
+  schedule:
+    # Argentina UTC-3, lunes a viernes. GitHub puede iniciar con demora.
+    - cron: '0 15 * * 1-5'   # 12:00 AR - manana
+    - cron: '0 20 * * 1-5'   # 17:00 AR - tarde
+    - cron: '15 23 * * 1-5'  # 20:15 AR - vespertino
   workflow_dispatch:
     inputs:
       fecha:
@@ -26,7 +31,7 @@ on:
 permissions:
   contents: read
 jobs:
-  prueba-pdf:
+  informe-whatsapp:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -41,11 +46,11 @@ jobs:
           TDD_WA_PHONE_NUMBER_ID: ${{ secrets.TDD_WA_PHONE_NUMBER_ID }}
           TDD_WA_TEST_RECIPIENT: ${{ secrets.TDD_WA_TEST_RECIPIENT }}
           REPORT_DATE: ${{ inputs.fecha }}
-          REPORT_SCOPE: ${{ inputs.alcance }}
-          REPORT_DRY_RUN: ${{ inputs.modo == 'validar' && '1' || '0' }}
+          REPORT_SCOPE: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 15 * * 1-5' && 'tm' || github.event.schedule == '0 20 * * 1-5' && 'tm_tt' || 'general') || inputs.alcance }}
+          REPORT_DRY_RUN: ${{ github.event_name == 'schedule' && '0' || (inputs.modo == 'validar' && '1' || '0') }}
         run: python3 scripts/tdd_whatsapp_report.py
       - name: Guardar mensaje de texto para revisar
-        if: ${{ inputs.modo == 'validar' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.modo == 'validar' }}
         uses: actions/upload-artifact@v4
         with:
           name: informe-tdd-${{ inputs.alcance }}-${{ inputs.fecha || 'hoy' }}
