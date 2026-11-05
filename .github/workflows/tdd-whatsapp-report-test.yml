@@ -1,4 +1,4 @@
-name: TDD 2027 - Informe PDF por WhatsApp (prueba manual)
+name: TDD 2027 - Informe de texto por WhatsApp (prueba manual)
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +7,7 @@ on:
         required: false
         type: string
       modo:
-        description: "Validar PDF sin enviar (recomendado) o enviar por WhatsApp"
+        description: "Validar mensaje sin enviar o enviar por WhatsApp"
         required: true
         default: validar
         type: choice
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validar sintaxis Python antes del envio
         run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email.py
-      - name: Instalar dependencias del PDF visual
+      - name: Instalar dependencias de lectura de asistencia
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
       - name: Generar informe y opcionalmente enviar a destinatario de prueba
         env:
@@ -44,7 +44,7 @@ jobs:
           REPORT_SCOPE: ${{ inputs.alcance }}
           REPORT_DRY_RUN: ${{ inputs.modo == 'validar' && '1' || '0' }}
         run: python3 scripts/tdd_whatsapp_report.py
-      - name: Guardar PDF y mensaje para revisar
+      - name: Guardar mensaje de texto para revisar
         if: ${{ inputs.modo == 'validar' }}
         uses: actions/upload-artifact@v4
         with:
