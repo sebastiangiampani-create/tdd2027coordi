@@ -16,8 +16,32 @@ def call(url, token, data, content_type):
         with urllib.request.urlopen(request,timeout=45) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        # Do not log tokens, request bodies, phone numbers, or response payloads.
-        raise RuntimeError(f"Meta devolvio HTTP {exc.code}. Comproba que respondiste al numero de prueba en las ultimas 24 horas y que el token sigue vigente.") from None
+        # Surface only Meta's structured error code and message, never request credentials,
+        # phone numbers, tokens, or complete response bodies.
+        error_code=None
+        error_subcode=None
+        error_type=None
+        try:
+            payload=json.loads(exc.read().decode("utf-8"))
+            meta_error=payload.get("error",{}) if isinstance(payload,dict) else {}
+            if isinstance(meta_error,dict):
+                if isinstance(meta_error.get("code"),int):
+                    error_code=meta_error["code"]
+                if isinstance(meta_error.get("error_subcode"),int):
+                    error_subcode=meta_error["error_subcode"]
+                if isinstance(meta_error.get("type"),str) and re.fullmatch(r"[A-Za-z_]{1,80}",meta_error["type"]):
+                    error_type=meta_error["type"]
+        except (ValueError,UnicodeError,OSError):
+            pass
+        details=[]
+        if error_code is not None: details.append(f"codigo Meta {error_code}")
+        if error_subcode is not None: details.append(f"subcodigo {error_subcode}")
+        if error_type: details.append(f"tipo {error_type}")
+        suffix=f" ({', '.join(details)})" if details else ""
+        hint=("Revisa que el numero este habilitado como destinatario de prueba, "
+              "los permisos de WhatsApp del token y la ventana de atencion de 24 horas "
+              "para enviar documentos sin plantilla.")
+        raise RuntimeError(f"Meta devolvio HTTP {exc.code}{suffix}. {hint}") from None
 
 def send(token,phone_id,recipient,payload):
     body={"messaging_product":"whatsapp","recipient_type":"individual","to":recipient,**payload}
