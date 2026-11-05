@@ -4,7 +4,7 @@ on:
     # Argentina UTC-3, lunes a viernes. GitHub puede iniciar con demora.
     - cron: '0 15 * * 1-5'   # 12:00 AR - manana
     - cron: '0 20 * * 1-5'   # 17:00 AR - tarde
-    - cron: '15 23 * * 1-5'  # 20:15 AR - vespertino
+    - cron: '45 22 * * 1-5'  # 19:45 AR - vespertino
   workflow_dispatch:
     inputs:
       fecha:
@@ -20,7 +20,7 @@ on:
           - validar
           - enviar
       alcance:
-        description: "Corte acumulativo: tm (12:00), tm_tt (17:00), general (20:15)"
+        description: "Corte acumulativo: tm (12:00), tm_tt (17:00), general (19:45)"
         required: true
         default: general
         type: choice
