@@ -72,7 +72,7 @@ def main():
     daily_groups={d for r in prior if (d:=day(at(r,13)))}
     attendance_encounters=sum(count([r for r in prior if day(at(r,13))==d]) for d in daily_groups)
     expected_encounters=sum(sum(v for i,v in enumerate(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[])) if d<target or SHIFTS[i] in included) for d in daily_groups)
-    shift_breakdown="".join(f"  • {name}: {count([r for r in today if norm(at(r,14))==norm(name)])} de {plan[i] if i<len(plan) else 0} previstos\\n" for i,name in enumerate(SHIFTS) if name in included)
+    shift_breakdown="".join(f"  • {name}: {count([r for r in today if norm(at(r,14))==norm(name)])} de {plan[i] if i<len(plan) else 0} previstos\n" for i,name in enumerate(SHIFTS) if name in included)
     def fmt(value): return f"{value:,}".replace(",", ".")
     caption=(
         "*TALLERES DE DISEÑO 2027*\n"
