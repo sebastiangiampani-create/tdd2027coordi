@@ -64,30 +64,43 @@ def main():
     if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
     # An outbound freeform document requires a customer service window opened by an inbound user message.
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
-    expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in included and i<len(plan))
-    audience_label={"tm":"del turno mañana","tm_tt":"de los turnos mañana y tarde","general":"de la jornada completa"}[scope]
-    # At partial cutoffs, do not count future shifts for the current date.
+    current_shift={"tm":"Mañana","tm_tt":"Tarde","general":"Vespertino"}[scope]
+    current_index=SHIFTS.index(current_shift)
+    current_actual=count([r for r in today if norm(at(r,14))==norm(current_shift)])
+    current_expected=plan[current_index] if current_index<len(plan) else 0
+    day_actual=count(today)
+    day_expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in included and i<len(plan))
     prior=[r for r in records if (d:=day(at(r,13))) and (d<target or (d==target and norm(at(r,14)) in {norm(name) for name in included}))]
     unique_period=count(prior)
-    daily_groups={d for r in prior if (d:=day(at(r,13)))}
-    attendance_encounters=sum(count([r for r in prior if day(at(r,13))==d]) for d in daily_groups)
-    expected_encounters=sum(sum(v for i,v in enumerate(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[])) if d<target or SHIFTS[i] in included) for d in daily_groups)
-    shift_breakdown="".join(f"  • {name}: {count([r for r in today if norm(at(r,14))==norm(name)])} de {plan[i] if i<len(plan) else 0} previstos\n" for i,name in enumerate(SHIFTS) if name in included)
     def fmt(value): return f"{value:,}".replace(",", ".")
+    def pct(actual,planned): return percent(actual,planned).replace(".", ",")
+    breakdown=[]
+    for i,name in enumerate(SHIFTS):
+        if name not in included: continue
+        n=count([r for r in today if norm(at(r,14))==norm(name)])
+        p=plan[i] if i<len(plan) else 0
+        breakdown.append(f"- {name}: {fmt(n)} asistentes / {fmt(p)} previstos ({pct(n,p)})")
+    shift_breakdown="\n".join(breakdown)
+    cutoff={"tm":"12:00","tm_tt":"17:00","general":"20:15"}[scope]
     caption=(
         "*TALLERES DE DISEÑO 2027*\n"
-        f"*Informe de asistencia · {labels[scope]}*\n\n"
-        f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n"
-        f"👥 *Asistentes {audience_label}:* {fmt(count(today))} personas (DNI únicos)\n"
-        f"📊 *Previstos:* {fmt(expected)}\n"
-        f"📈 *Asistencia:* {percent(count(today),expected)}\n\n"
-        f"*Detalle por turno:*\n{shift_breakdown}\n"
-        f"*Acumulado del período (hasta {target.strftime('%d/%m')}):*\n"
-        f"• Docentes distintos: {fmt(unique_period)} de 3.853 ({percent(unique_period,3853)})\n"
-        f"• Asistencias por jornada: {fmt(attendance_encounters)} de {fmt(expected_encounters)} previstas ({percent(attendance_encounters,expected_encounters)})\n\n"
-        "📎 *Adjunto:* informe visual en PDF\n"
-        "_Sin datos nominales de participantes._\n\n"
-        "Escuela de Maestros · Ministerio de Educación"
+        f"*Informe de asistencia - Turno {current_shift.lower()}*\n\n"
+        f"Fecha: {target.strftime('%d/%m/%Y')}\n\n"
+        f"*ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
+        f"Docentes asistentes: {fmt(current_actual)}\n"
+        f"Docentes previstos: {fmt(current_expected)}\n"
+        f"Porcentaje: {pct(current_actual,current_expected)}\n\n"
+        f"*TOTAL DEL DIA HASTA LAS {cutoff}*\n"
+        f"{shift_breakdown}\n\n"
+        f"Total asistentes: {fmt(day_actual)} (DNI unicos)\n"
+        f"Total previstos: {fmt(day_expected)}\n"
+        f"Porcentaje: {pct(day_actual,day_expected)}\n\n"
+        "*PARTICIPACION ACUMULADA DEL PERIODO*\n"
+        f"Docentes distintos: {fmt(unique_period)}\n"
+        f"Cobertura del universo: {pct(unique_period,3853)} de 3.853 docentes\n\n"
+        "Adjunto: informe visual en PDF\n"
+        "_Datos registrados al momento del envio. Totales por DNI unico._\n\n"
+        "Escuela de Maestros - Ministerio de Educacion"
     )
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
     print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
