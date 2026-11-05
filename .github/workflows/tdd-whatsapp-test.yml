@@ -1,0 +1,17 @@
+name: TDD 2027 - Prueba WhatsApp (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  whatsapp-prueba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enviar plantilla de prueba sin datos personales
+        env:
+          TDD_WA_ACCESS_TOKEN: ${{ secrets.TDD_WA_ACCESS_TOKEN }}
+          TDD_WA_PHONE_NUMBER_ID: ${{ secrets.TDD_WA_PHONE_NUMBER_ID }}
+          TDD_WA_TEST_RECIPIENT: ${{ secrets.TDD_WA_TEST_RECIPIENT }}
+        run: python3 scripts/tdd_whatsapp_test.py
