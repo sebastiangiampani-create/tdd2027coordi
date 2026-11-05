@@ -39,17 +39,19 @@ jobs:
         run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py
       - name: Instalar dependencias
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
-      - name: Generar informe sin enviar WhatsApp
+      - name: Generar informe de texto auxiliar
         env:
           REPORT_DRY_RUN: "1"
           REPORT_DATE: ${{ inputs.fecha }}
           REPORT_SCOPE: ${{ github.event_name == 'schedule' && (github.event.schedule == '0 15 * * 1-5' && 'tm' || github.event.schedule == '0 20 * * 1-5' && 'tm_tt' || 'general') || inputs.alcance }}
+        continue-on-error: true
         run: python3 scripts/tdd_whatsapp_report.py
       - name: Enviar informe por correo en CCO
         if: ${{ github.event_name == 'schedule' || inputs.modo == 'enviar' }}
         env:
           TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          REPORT_DATE: ${{ inputs.fecha }}
         run: python3 scripts/tdd_report_email.py
       - name: Guardar informe de validacion
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.modo == 'validar' }}
