@@ -1,5 +1,6 @@
 """Optional plain-text email delivery for TDD WhatsApp report; no attachments."""
 import os
+import json
 import re
 import smtplib
 import ssl
@@ -7,11 +8,8 @@ from email.message import EmailMessage
 from pathlib import Path
 
 def main():
-    raw=os.environ.get("TDD_EMAIL_RECIPIENTS","").strip()
-    if not raw:
-        print("Email pendiente: no hay destinatarios definidos. Sin envio.")
-        return
-    addresses=list(dict.fromkeys(x.strip().lower() for x in re.split(r"[,;\\s]+",raw) if x.strip()))
+    config=json.loads(Path("config/destinatarios.json").read_text(encoding="utf-8"))
+    addresses=list(dict.fromkeys(x["email"].strip().lower() for x in config["destinatarios"] if x.get("activo") is True))
     pattern=r"[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}"
     if not addresses or any(not re.fullmatch(pattern,x) for x in addresses):
         raise RuntimeError("Destinatarios de email invalidos")
