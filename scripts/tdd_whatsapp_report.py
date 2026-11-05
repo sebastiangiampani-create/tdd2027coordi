@@ -99,12 +99,14 @@ def main():
         f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
         f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
         f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
-        + daily_section
-        + "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
+    )
+    caption += daily_section
+    caption += (
+        "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
         f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
         "📎 *Informe visual en PDF adjunto*\n"
-        "_Datos registrados al momento del envío. Totales por DNI unico._\n\n"
+        "_Datos registrados al momento del envío. Totales por DNI únicos._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
