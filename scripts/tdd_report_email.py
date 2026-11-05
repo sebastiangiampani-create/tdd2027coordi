@@ -131,7 +131,7 @@ def encrypted_workbook(rows, password):
     return data
 
 
-def visual_pdf(records, target, proposals):
+def visual_pdf(records, target, proposals, included_shifts=None):
     """One-page visual attendance dashboard; all counts are distinct DNI."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import HexColor, white
@@ -160,12 +160,15 @@ def visual_pdf(records, target, proposals):
         if maximum and value:
             rect(x,y,max(3,w*min(value/maximum,1)),7,HexColor("#2677bd"),3)
     def num(items):return count(items)
-    relevant=[r for r in records if day(at(r,13)) and day(at(r,13))<=target]
+    shift_names = tuple(included_shifts) if included_shifts is not None else tuple(SHIFTS)
+    if not shift_names or any(name not in SHIFTS for name in shift_names):
+        raise ValueError("Turnos de informe invalidos")
+    relevant=[r for r in records if day(at(r,13)) and day(at(r,13))<=target and norm(at(r,14)) in {norm(name) for name in shift_names}]
     today=[r for r in relevant if day(at(r,13))==target]
     dates=sorted({day(at(r,13)) for r in relevant})
     weekday=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
     plan=PLANNED.get(weekday[target.weekday()],[])
-    expected=sum(plan)
+    expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in shift_names and i<len(plan))
     daily=num(today)
     accumulated=num(relevant)
     cv.setFillColor(white);cv.rect(0,0,W,H,fill=1,stroke=0)
@@ -175,7 +178,8 @@ def visual_pdf(records, target, proposals):
     ministry=ImageReader(BytesIO(cairosvg.svg2png(url="assets/ministerio-footer.svg",output_width=650)))
     cv.drawImage(ministry,W-245,H-59,width=204,height=34,mask="auto",preserveAspectRatio=True,anchor="c")
     txt(40,H-122,"C0890  /  TDD 2027",11,True,blue)
-    txt(40,H-147,"INFORME DE ASISTENCIA",21,True,navy)
+    scope_label = "GENERAL" if len(shift_names)==len(SHIFTS) else " + ".join({"Mañana":"TM","Tarde":"TT","Vespertino":"TV"}[name] for name in shift_names)
+    txt(40,H-147,"INFORME DE ASISTENCIA - "+scope_label,19,True,navy)
     txt(40,H-167,"Talleres de Diseño  |  "+target.strftime("%d/%m/%Y"),10,False,muted)
     # Hero
     rect(40,H-298,W-80,113,pale,12,HexColor("#b8d1f2"))
@@ -187,7 +191,7 @@ def visual_pdf(records, target, proposals):
     y=H-393
     cards=[("ASISTENCIA ACUMULADA",str(accumulated),"personas distintas"),
            ("COBERTURA DEL DIA",percent(daily,expected),"sobre previstos"),
-           ("COBERTURA DEL UNIVERSO",percent(accumulated,3853),"de 3.853 docentes")]
+           (("COBERTURA DEL UNIVERSO",percent(accumulated,3853),"de 3.853 docentes") if len(shift_names)==len(SHIFTS) else ("TURNOS INCLUIDOS",scope_label,"corte parcial"))]
     gap=9
     cardw=(W-80-gap*2)/3
     for i,(label,value,detail) in enumerate(cards):
@@ -205,7 +209,7 @@ def visual_pdf(records, target, proposals):
         ry=hy-31-i*30
         group=[r for r in relevant if day(at(r,13))==d]
         n=num(group)
-        exp=sum(PLANNED.get(weekday[d.weekday()],[]))
+        exp=sum(PLANNED.get(weekday[d.weekday()],[])[i] for i,name in enumerate(SHIFTS) if name in shift_names and i<len(PLANNED.get(weekday[d.weekday()],[])))
         txt(42,ry,d.strftime("%d/%m"),9,True,navy)
         bar(99,ry-1,310,n,max_history)
         txt(424,ry,str(n),10,True,navy)
@@ -215,8 +219,8 @@ def visual_pdf(records, target, proposals):
     txt(40,lower,"ASISTENCIA POR TURNO",11,True,navy)
     txt(318,lower,"POR DEPENDENCIA",11,True,navy)
     for i,name in enumerate(SHIFTS):
-        n=num([r for r in today if norm(at(r,14))==norm(name)])
-        exp=plan[i] if i<len(plan) else 0
+        n=num([r for r in today if norm(at(r,14))==norm(name)]) if name in shift_names else 0
+        exp=plan[i] if i<len(plan) and name in shift_names else 0
         yy=lower-28-i*36
         txt(41,yy,name,9,True,navy)
         bar(113,yy-2,92,n,exp)
