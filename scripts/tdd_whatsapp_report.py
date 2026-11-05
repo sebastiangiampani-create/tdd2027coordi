@@ -52,10 +52,13 @@ def send(token,phone_id,recipient,payload):
 def main():
     token=os.environ.get("TDD_WA_ACCESS_TOKEN","").strip()
     phone_id=os.environ.get("TDD_WA_PHONE_NUMBER_ID","").strip()
-    recipient=re.sub(r"\D","",os.environ.get("TDD_WA_TEST_RECIPIENT",""))
     dry_run=os.environ.get("REPORT_DRY_RUN","").strip().lower() in {"1","true","yes"}
-    if not dry_run and (not token or not phone_id.isdigit() or not 8<=len(recipient)<=15):
-        raise RuntimeError("Faltan secrets TDD_WA_ACCESS_TOKEN, TDD_WA_PHONE_NUMBER_ID o TDD_WA_TEST_RECIPIENT")
+    raw_recipients=os.environ.get("TDD_WA_RECIPIENTS","").strip() or os.environ.get("TDD_WA_TEST_RECIPIENT","").strip()
+    recipients=list(dict.fromkeys(re.sub(r"\\D","",item) for item in re.split(r"[,;\\s]+",raw_recipients) if item.strip()))
+    if not dry_run and (not token or not phone_id.isdigit()):
+        raise RuntimeError("Faltan secrets TDD_WA_ACCESS_TOKEN o TDD_WA_PHONE_NUMBER_ID")
+    if not dry_run and (not recipients or any(not 8<=len(number)<=15 for number in recipients)):
+        raise RuntimeError("Configura TDD_WA_RECIPIENTS con numeros internacionales separados por comas")
     raw=os.environ.get("REPORT_DATE","").strip()
     target=datetime.strptime(raw,"%Y-%m-%d").date() if raw else datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
     rows=read(87091997)
@@ -113,8 +116,19 @@ def main():
         (out/f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.txt").write_text(caption,encoding="utf-8")
         print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del periodo {unique_period}.")
         return
-    send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
-    print("Meta acepto el mensaje de texto para el destinatario de prueba.")
+    failures=[]
+    accepted=0
+    for index,recipient in enumerate(recipients,1):
+        try:
+            send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
+            accepted+=1
+        except RuntimeError as exc:
+            failures.append((index,str(exc)))
+    print(f"Meta acepto {accepted}/{len(recipients)} mensajes. Aceptacion no garantiza entrega.")
+    if failures:
+        for index,error in failures:
+            print(f"Destinatario #{index}: {error}")
+        raise RuntimeError(f"Fallaron {len(failures)} de {len(recipients)} envios.")
 
 if __name__=="__main__":
     main()
