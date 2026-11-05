@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Validar sintaxis Python antes del envio
+        run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email.py
       - name: Instalar dependencias del PDF visual
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
       - name: Enviar PDF solo a destinatario de prueba
