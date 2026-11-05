@@ -110,18 +110,14 @@ def main():
         "_Datos registrados al momento del envío. Totales por DNI únicos._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
+    from pathlib import Path
+    out=Path("report-output")
+    out.mkdir(exist_ok=True)
+    (out/"mensaje.txt").write_text(caption,encoding="utf-8")
     if dry_run:
-        from pathlib import Path
-        out=Path("report-output")
-        out.mkdir(exist_ok=True)
-        (out/f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.txt").write_text(caption,encoding="utf-8")
         print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del periodo {unique_period}.")
         return
-    failures=[]
-    accepted=0
-    for index,recipient in enumerate(recipients,1):
-        try:
-            send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
+    send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
             accepted+=1
         except RuntimeError as exc:
             failures.append((index,str(exc)))
