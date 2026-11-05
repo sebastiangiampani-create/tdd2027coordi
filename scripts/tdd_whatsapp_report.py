@@ -86,7 +86,7 @@ def main():
     daily_section=""
     if scope!="tm":
         earlier=[name for name in included if name!=current_shift]
-        earlier_lines="\n".join(f"{icons[name]} *Turno {name.lower()}:* {fmt(count([r for r in today if norm(at(r,14))==norm(name)]))} asistentes" for name in earlier)
+        earlier_lines="\n".join(f"{icons[name]} *Turno {name.lower()}:* {fmt(count([r for r in today if norm(at(r,14))==norm(name)]))} de {fmt(plan[SHIFTS.index(name)] if SHIFTS.index(name)<len(plan) else 0)} previstos ({pct(count([r for r in today if norm(at(r,14))==norm(name)]),plan[SHIFTS.index(name)] if SHIFTS.index(name)<len(plan) else 0)})" for name in earlier)
         daily_section=(f"📊 *TOTAL DEL DÍA · HASTA LAS {cutoff}*\n{earlier_lines}\n"
                        f"👥 *Total asistentes:* {fmt(day_actual)} (DNI únicos)\n"
                        f"📋 *Total previstos:* {fmt(day_expected)}\n"
