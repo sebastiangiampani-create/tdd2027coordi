@@ -65,11 +65,12 @@ def main():
     # An outbound freeform document requires a customer service window opened by an inbound user message.
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
     expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in included and i<len(plan))
+    audience_label={"tm":"del turno mañana","tm_tt":"de los turnos mañana y tarde","general":"de la jornada completa"}[scope]
     caption=(
         "*TALLERES DE DISEÑO 2027*\n"
         f"*Informe de asistencia · {labels[scope]}*\n\n"
         f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n"
-        f"👥 *Asistentes:* {count(today)} personas (DNI únicos)\n"
+        f"👥 *Asistentes {audience_label}:* {count(today)} personas (DNI únicos)\n"
         f"📊 *Previstos:* {expected}\n"
         f"📈 *Asistencia:* {percent(count(today),expected)}\n\n"
         "📎 *Adjunto:* informe visual en PDF\n"
