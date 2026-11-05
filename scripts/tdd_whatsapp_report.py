@@ -65,7 +65,6 @@ def main():
     scopes={"tm":("Mañana",),"tm_tt":("Mañana","Tarde"),"general":tuple(SHIFTS)}
     if scope not in scopes: raise RuntimeError("REPORT_SCOPE invalido: tm, tm_tt o general")
     included=scopes[scope]
-    labels={"tm":"TM","tm_tt":"TM + TT","general":"GENERAL"}
     today=[r for r in records if day(at(r,13))==target and norm(at(r,14)) in {norm(name) for name in included}]
     if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
@@ -73,31 +72,12 @@ def main():
     current_index=SHIFTS.index(current_shift)
     current_actual=count([r for r in today if norm(at(r,14))==norm(current_shift)])
     current_expected=plan[current_index] if current_index<len(plan) else 0
-    day_actual=count(today)
-    day_expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in included and i<len(plan))
     prior=[r for r in records if (d:=day(at(r,13))) and (d<target or (d==target and norm(at(r,14)) in {norm(name) for name in included}))]
     unique_period=count(prior)
     def fmt(value): return f"{value:,}".replace(",", ".")
     def pct(actual,planned): return percent(actual,planned).replace(".", ",")
     icons={"Mañana":"☀️","Tarde":"🌤️","Vespertino":"🌙"}
-    breakdown=[]
-    for i,name in enumerate(SHIFTS):
-        if name not in included: continue
-        n=count([r for r in today if norm(at(r,14))==norm(name)])
-        p=plan[i] if i<len(plan) else 0
-        breakdown.append(f"{icons[name]} *Turno {name.lower()}:* {fmt(n)} asistentes / {fmt(p)} previstos ({pct(n,p)})")
-    shift_breakdown="\n".join(breakdown)
-    cutoff={"tm":"12:00","tm_tt":"17:00","general":"20:15"}[scope]
-    daily_section=""
-    if scope!="tm":
-        earlier=[name for name in included if name!=current_shift]
-        earlier_lines="\n".join(f"{icons[name]} *Turno {name.lower()}:* {fmt(count([r for r in today if norm(at(r,14))==norm(name)]))} de {fmt(plan[SHIFTS.index(name)] if SHIFTS.index(name)<len(plan) else 0)} previstos ({pct(count([r for r in today if norm(at(r,14))==norm(name)]),plan[SHIFTS.index(name)] if SHIFTS.index(name)<len(plan) else 0)})" for name in earlier)
-        daily_section=(f"📊 *TOTAL DEL DÍA · HASTA LAS {cutoff}*\n{earlier_lines}\n"
-                       f"👥 *Total asistentes:* {fmt(day_actual)} (DNI únicos)\n"
-                       f"📋 *Total previstos:* {fmt(day_expected)}\n"
-                       f"📈 *Porcentaje del día:* {pct(day_actual,day_expected)}\n\n")
     caption=(
-        "📚 *TALLERES DE DISEÑO 2027*\n"
         f"📍 *INFORME DE ASISTENCIA · TURNO {current_shift.upper()}*\n\n"
         f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n\n"
         f"{icons[current_shift]} *ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
@@ -105,7 +85,6 @@ def main():
         f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
         f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
     )
-    caption += daily_section
     caption += (
         "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
@@ -118,7 +97,7 @@ def main():
         out=Path("report-output")
         out.mkdir(exist_ok=True)
         (out/f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.txt").write_text(caption,encoding="utf-8")
-        print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del dia {day_actual}, DNI unicos del periodo {unique_period}.")
+        print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del periodo {unique_period}.")
         return
     send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
     print("Meta acepto el mensaje de texto para el destinatario de prueba.")
