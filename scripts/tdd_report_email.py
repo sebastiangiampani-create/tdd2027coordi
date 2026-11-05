@@ -131,7 +131,7 @@ def encrypted_workbook(rows, password):
     return data
 
 
-def visual_pdf(records, target, proposals, included_shifts=None):
+def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff=False):
     """One-page visual attendance dashboard; all counts are distinct DNI."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import HexColor, white
@@ -171,6 +171,13 @@ def visual_pdf(records, target, proposals, included_shifts=None):
     expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in shift_names and i<len(plan))
     daily=num(today)
     accumulated=num(relevant)
+    if whatsapp_cutoff:
+        current=shift_names[-1]
+        current_idx=SHIFTS.index(current)
+        current_count=num([r for r in today if norm(at(r,14))==norm(current)])
+        current_expected=plan[current_idx] if current_idx<len(plan) else 0
+        relevant=[r for r in records if (d:=day(at(r,13))) and (d<target or (d==target and norm(at(r,14)) in {norm(name) for name in shift_names}))]
+        accumulated=num(relevant)
     cv.setFillColor(white);cv.rect(0,0,W,H,fill=1,stroke=0)
     rect(0,H-93,W,93,navy,0)
     logo=ImageReader(BytesIO(cairosvg.svg2png(url="assets/em-logo-footer.svg",output_width=500)))
@@ -183,15 +190,17 @@ def visual_pdf(records, target, proposals, included_shifts=None):
     txt(40,H-167,"Talleres de Diseño  |  "+target.strftime("%d/%m/%Y"),10,False,muted)
     # Hero
     rect(40,H-298,W-80,113,pale,12,HexColor("#b8d1f2"))
-    txt(60,H-208,"ASISTENCIA DEL DIA",11,True,blue)
-    txt(59,H-268,str(daily),51,True,navy)
+    txt(60,H-208,("ASISTENCIA DEL TURNO "+current.upper()) if whatsapp_cutoff else "ASISTENCIA DEL DIA",11,True,blue)
+    txt(59,H-268,str(current_count if whatsapp_cutoff else daily),51,True,navy)
     txt(245,H-249,"asistentes",15,True,navy)
-    txt(245,H-268,"de "+str(expected)+" previstos",10,False,muted)
+    txt(245,H-268,"de "+str(current_expected if whatsapp_cutoff else expected)+" previstos",10,False,muted)
     # KPI cards
     y=H-393
     cards=[("ASISTENCIA ACUMULADA",str(accumulated),"personas distintas"),
            ("COBERTURA DEL DIA",percent(daily,expected),"sobre previstos"),
            (("COBERTURA DEL UNIVERSO",percent(accumulated,3853),"de 3.853 docentes") if len(shift_names)==len(SHIFTS) else ("TURNOS INCLUIDOS",scope_label,"corte parcial"))]
+    if whatsapp_cutoff:
+        cards=[("TOTAL DEL DIA",str(daily),"DNI unicos"),("COBERTURA DEL DIA",percent(daily,expected),"de "+str(expected)+" previstos"),("COBERTURA UNIVERSO",percent(accumulated,3853),str(accumulated)+" de 3.853 docentes")]
     gap=9
     cardw=(W-80-gap*2)/3
     for i,(label,value,detail) in enumerate(cards):
