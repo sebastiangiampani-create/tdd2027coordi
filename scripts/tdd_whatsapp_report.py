@@ -44,7 +44,7 @@ def main():
     labels={"tm":"TM","tm_tt":"TM + TT","general":"GENERAL"}
     today=[r for r in records if day(at(r,13))==target and norm(at(r,14)) in {norm(name) for name in included}]
     if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
-    pdf=visual_pdf(records,target,proposals,included_shifts=included)
+    pdf=visual_pdf(records,target,proposals,included_shifts=included,whatsapp_cutoff=True)
     if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF invalido")
     boundary="TDD2027UploadBoundary"
     filename=f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.pdf"
@@ -74,33 +74,34 @@ def main():
     unique_period=count(prior)
     def fmt(value): return f"{value:,}".replace(",", ".")
     def pct(actual,planned): return percent(actual,planned).replace(".", ",")
+    icons={"Mañana":"☀️","Tarde":"🌤️","Vespertino":"🌙"}
     breakdown=[]
     for i,name in enumerate(SHIFTS):
         if name not in included: continue
         n=count([r for r in today if norm(at(r,14))==norm(name)])
         p=plan[i] if i<len(plan) else 0
-        breakdown.append(f"- {name}: {fmt(n)} asistentes / {fmt(p)} previstos ({pct(n,p)})")
+        breakdown.append(f"{icons[name]} *Turno {name.lower()}:* {fmt(n)} asistentes / {fmt(p)} previstos ({pct(n,p)})")
     shift_breakdown="\n".join(breakdown)
     cutoff={"tm":"12:00","tm_tt":"17:00","general":"20:15"}[scope]
     caption=(
-        "*TALLERES DE DISEÑO 2027*\n"
-        f"*Informe de asistencia - Turno {current_shift.lower()}*\n\n"
-        f"Fecha: {target.strftime('%d/%m/%Y')}\n\n"
-        f"*ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
-        f"Docentes asistentes: {fmt(current_actual)}\n"
-        f"Docentes previstos: {fmt(current_expected)}\n"
-        f"Porcentaje: {pct(current_actual,current_expected)}\n\n"
-        f"*TOTAL DEL DIA HASTA LAS {cutoff}*\n"
+        "📚 *TALLERES DE DISEÑO 2027*\n"
+        f"📍 *INFORME DE ASISTENCIA · TURNO {current_shift.upper()}*\n\n"
+        f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n\n"
+        f"{icons[current_shift]} *ASISTENCIA DEL TURNO {current_shift.upper()}*\n"
+        f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
+        f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
+        f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
+        f"📊 *TOTAL DEL DÍA · HASTA LAS {cutoff}*\n"
         f"{shift_breakdown}\n\n"
-        f"Total asistentes: {fmt(day_actual)} (DNI unicos)\n"
-        f"Total previstos: {fmt(day_expected)}\n"
+        f"👥 *Total asistentes:* {fmt(day_actual)} (DNI unicos)\n"
+        f"📋 *Total previstos:* {fmt(day_expected)}\n"
         f"Porcentaje: {pct(day_actual,day_expected)}\n\n"
-        "*PARTICIPACION ACUMULADA DEL PERIODO*\n"
-        f"Docentes distintos: {fmt(unique_period)}\n"
-        f"Cobertura del universo: {pct(unique_period,3853)} de 3.853 docentes\n\n"
-        "Adjunto: informe visual en PDF\n"
+        "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
+        f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
+        f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
+        "📎 *Informe visual en PDF adjunto*\n"
         "_Datos registrados al momento del envio. Totales por DNI unico._\n\n"
-        "Escuela de Maestros - Ministerio de Educacion"
+        "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
     print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
