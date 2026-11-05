@@ -42,7 +42,7 @@ def main():
     pdf=visual_pdf(records,target,proposals)
     if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF invalido")
     boundary="TDD2027UploadBoundary"
-    filename=f"TDD2027_informe_visual_{target.isoformat()}.pdf"
+    filename=f"TDD_2027_Asistencia_{target.isoformat()}.pdf"
     fields=[
         ("messaging_product",b"whatsapp",None),
         ("type",b"application/pdf",None),
@@ -58,7 +58,15 @@ def main():
     media_id=uploaded.get("id")
     if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
     # An outbound freeform document requires a customer service window opened by an inbound user message.
-    caption=f"TDD 2027 | Informe de asistencia {target.strftime('%d/%m/%Y')} | {count(today)} DNI unicos presentes. Documento visual sin nomina."
+    caption=(
+        "*TALLERES DE DISEÑO 2027*\n"
+        "*Informe de asistencia*\n\n"
+        f"📅 *Fecha:* {target.strftime('%d/%m/%Y')}\n"
+        f"👥 *Asistentes:* {count(today)} personas (DNI únicos)\n\n"
+        "📎 *Adjunto:* informe visual en PDF\n"
+        "_Sin datos nominales de participantes._\n\n"
+        "Escuela de Maestros · Ministerio de Educación"
+    )
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
     print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
 
