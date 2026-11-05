@@ -53,7 +53,8 @@ def main():
     token=os.environ.get("TDD_WA_ACCESS_TOKEN","").strip()
     phone_id=os.environ.get("TDD_WA_PHONE_NUMBER_ID","").strip()
     recipient=re.sub(r"\D","",os.environ.get("TDD_WA_TEST_RECIPIENT",""))
-    if not token or not phone_id.isdigit() or not 8<=len(recipient)<=15:
+    dry_run=os.environ.get("REPORT_DRY_RUN","").strip().lower() in {"1","true","yes"}
+    if not dry_run and (not token or not phone_id.isdigit() or not 8<=len(recipient)<=15):
         raise RuntimeError("Faltan secrets TDD_WA_ACCESS_TOKEN, TDD_WA_PHONE_NUMBER_ID o TDD_WA_TEST_RECIPIENT")
     raw=os.environ.get("REPORT_DATE","").strip()
     target=datetime.strptime(raw,"%Y-%m-%d").date() if raw else datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
@@ -70,22 +71,7 @@ def main():
     if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
     pdf=visual_pdf(records,target,proposals,included_shifts=included,whatsapp_cutoff=True)
     if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF invalido")
-    boundary="TDD2027UploadBoundary"
     filename=f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.pdf"
-    fields=[
-        ("messaging_product",b"whatsapp",None),
-        ("type",b"application/pdf",None),
-        ("file",pdf,filename),
-    ]
-    parts=[]
-    for name,value,file_name in fields:
-        header=f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
-        if file_name: header+=f'; filename="{file_name}"\r\nContent-Type: application/pdf'
-        parts.append(header.encode()+b"\r\n\r\n"+value+b"\r\n")
-    parts.append(f"--{boundary}--\r\n".encode())
-    uploaded=call(f"{GRAPH}/{phone_id}/media",token,b"".join(parts),f"multipart/form-data; boundary={boundary}")
-    media_id=uploaded.get("id")
-    if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
     # An outbound freeform document requires a customer service window opened by an inbound user message.
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
     current_shift={"tm":"Mañana","tm_tt":"Tarde","general":"Vespertino"}[scope]
@@ -133,6 +119,29 @@ def main():
         "_Datos registrados al momento del envío. Totales por DNI únicos._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
+    if dry_run:
+        from pathlib import Path
+        out=Path("report-output")
+        out.mkdir(exist_ok=True)
+        (out/filename).write_bytes(pdf)
+        (out/(filename[:-4]+".txt")).write_text(caption,encoding="utf-8")
+        print(f"VALIDACION SIN ENVIO: PDF y resumen generados. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del dia {day_actual}, DNI unicos del periodo {unique_period}.")
+        return
+    boundary="TDD2027UploadBoundary"
+    fields=[
+        ("messaging_product",b"whatsapp",None),
+        ("type",b"application/pdf",None),
+        ("file",pdf,filename),
+    ]
+    parts=[]
+    for name,value,file_name in fields:
+        header=f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
+        if file_name: header+=f'; filename="{file_name}"\r\nContent-Type: application/pdf'
+        parts.append(header.encode()+b"\r\n\r\n"+value+b"\r\n")
+    parts.append(f"--{boundary}--\r\n".encode())
+    uploaded=call(f"{GRAPH}/{phone_id}/media",token,b"".join(parts),f"multipart/form-data; boundary={boundary}")
+    media_id=uploaded.get("id")
+    if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
     print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
 
