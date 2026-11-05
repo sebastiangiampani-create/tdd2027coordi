@@ -1,4 +1,4 @@
-"""Prueba manual de informe TDD por WhatsApp. Requiere ventana de atencion de 24h abierta."""
+"""Informe TDD por WhatsApp en texto. Requiere ventana de atencion de 24h abierta."""
 import json
 import os
 import re
@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from tdd_report_email import read, at, day, count, visual_pdf, norm, PLANNED, SHIFTS, percent
+from tdd_report_email import read, at, day, count, norm, PLANNED, SHIFTS, percent
 
 GRAPH="https://graph.facebook.com/v25.0"
 
@@ -40,7 +40,7 @@ def call(url, token, data, content_type):
         suffix=f" ({', '.join(details)})" if details else ""
         hint=("Revisa que el numero este habilitado como destinatario de prueba, "
               "los permisos de WhatsApp del token y la ventana de atencion de 24 horas "
-              "para enviar documentos sin plantilla.")
+              "para enviar mensajes sin plantilla.")
         raise RuntimeError(f"Meta devolvio HTTP {exc.code}{suffix}. {hint}") from None
 
 def send(token,phone_id,recipient,payload):
@@ -59,8 +59,7 @@ def main():
     raw=os.environ.get("REPORT_DATE","").strip()
     target=datetime.strptime(raw,"%Y-%m-%d").date() if raw else datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
     rows=read(87091997)
-    proposals=read(0)
-    if len(rows)<2 or len(proposals)<2: raise RuntimeError("No se pudieron consultar las planillas")
+    if len(rows)<2: raise RuntimeError("No se pudo consultar la planilla de asistencia")
     records=[r for r in rows[1:] if at(r,1)]
     scope=os.environ.get("REPORT_SCOPE","general").strip().lower()
     scopes={"tm":("Mañana",),"tm_tt":("Mañana","Tarde"),"general":tuple(SHIFTS)}
@@ -69,10 +68,6 @@ def main():
     labels={"tm":"TM","tm_tt":"TM + TT","general":"GENERAL"}
     today=[r for r in records if day(at(r,13))==target and norm(at(r,14)) in {norm(name) for name in included}]
     if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
-    pdf=visual_pdf(records,target,proposals,included_shifts=included,whatsapp_cutoff=True)
-    if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF invalido")
-    filename=f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.pdf"
-    # An outbound freeform document requires a customer service window opened by an inbound user message.
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
     current_shift={"tm":"Mañana","tm_tt":"Tarde","general":"Vespertino"}[scope]
     current_index=SHIFTS.index(current_shift)
@@ -115,7 +110,6 @@ def main():
         "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
         f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
-        "📎 *Informe visual en PDF adjunto*\n"
         "_Datos registrados al momento del envío. Totales por DNI únicos._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
@@ -123,27 +117,11 @@ def main():
         from pathlib import Path
         out=Path("report-output")
         out.mkdir(exist_ok=True)
-        (out/filename).write_bytes(pdf)
-        (out/(filename[:-4]+".txt")).write_text(caption,encoding="utf-8")
-        print(f"VALIDACION SIN ENVIO: PDF y resumen generados. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del dia {day_actual}, DNI unicos del periodo {unique_period}.")
+        (out/f"TDD_2027_Asistencia_{scope.upper()}_{target.isoformat()}.txt").write_text(caption,encoding="utf-8")
+        print(f"VALIDACION SIN ENVIO: texto generado. Corte {scope}, fecha {target}, asistentes del turno {current_actual}, DNI unicos del dia {day_actual}, DNI unicos del periodo {unique_period}.")
         return
-    boundary="TDD2027UploadBoundary"
-    fields=[
-        ("messaging_product",b"whatsapp",None),
-        ("type",b"application/pdf",None),
-        ("file",pdf,filename),
-    ]
-    parts=[]
-    for name,value,file_name in fields:
-        header=f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
-        if file_name: header+=f'; filename="{file_name}"\r\nContent-Type: application/pdf'
-        parts.append(header.encode()+b"\r\n\r\n"+value+b"\r\n")
-    parts.append(f"--{boundary}--\r\n".encode())
-    uploaded=call(f"{GRAPH}/{phone_id}/media",token,b"".join(parts),f"multipart/form-data; boundary={boundary}")
-    media_id=uploaded.get("id")
-    if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
-    send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
-    print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
+    send(token,phone_id,recipient,{"type":"text","text":{"preview_url":False,"body":caption}})
+    print("Meta acepto el mensaje de texto para el destinatario de prueba.")
 
 if __name__=="__main__":
     main()
