@@ -83,6 +83,14 @@ def main():
         breakdown.append(f"{icons[name]} *Turno {name.lower()}:* {fmt(n)} asistentes / {fmt(p)} previstos ({pct(n,p)})")
     shift_breakdown="\n".join(breakdown)
     cutoff={"tm":"12:00","tm_tt":"17:00","general":"20:15"}[scope]
+    daily_section=""
+    if scope!="tm":
+        earlier=[name for name in included if name!=current_shift]
+        earlier_lines="\n".join(f"{icons[name]} *Turno {name.lower()}:* {fmt(count([r for r in today if norm(at(r,14))==norm(name)]))} asistentes" for name in earlier)
+        daily_section=(f"📊 *TOTAL DEL DÍA · HASTA LAS {cutoff}*\n{earlier_lines}\n"
+                       f"👥 *Total asistentes:* {fmt(day_actual)} (DNI únicos)\n"
+                       f"📋 *Total previstos:* {fmt(day_expected)}\n"
+                       f"📈 *Porcentaje del día:* {pct(day_actual,day_expected)}\n\n")
     caption=(
         "📚 *TALLERES DE DISEÑO 2027*\n"
         f"📍 *INFORME DE ASISTENCIA · TURNO {current_shift.upper()}*\n\n"
@@ -91,16 +99,12 @@ def main():
         f"👥 *Docentes asistentes:* {fmt(current_actual)}\n"
         f"📋 *Docentes previstos:* {fmt(current_expected)}\n"
         f"📈 *Porcentaje:* {pct(current_actual,current_expected)}\n\n"
-        f"📊 *TOTAL DEL DÍA · HASTA LAS {cutoff}*\n"
-        f"{shift_breakdown}\n\n"
-        f"👥 *Total asistentes:* {fmt(day_actual)} (DNI unicos)\n"
-        f"📋 *Total previstos:* {fmt(day_expected)}\n"
-        f"Porcentaje: {pct(day_actual,day_expected)}\n\n"
+        daily_section
         "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
         f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
         "📎 *Informe visual en PDF adjunto*\n"
-        "_Datos registrados al momento del envio. Totales por DNI unico._\n\n"
+        "_Datos registrados al momento del envío. Totales por DNI unico._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
     send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
