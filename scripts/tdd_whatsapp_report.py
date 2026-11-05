@@ -1,0 +1,66 @@
+"""Prueba manual de informe TDD por WhatsApp. Requiere ventana de atencion de 24h abierta."""
+import json
+import os
+import re
+import urllib.error
+import urllib.request
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from tdd_report_email import read, at, day, count, visual_pdf
+
+GRAPH="https://graph.facebook.com/v25.0"
+
+def call(url, token, data, content_type):
+    request=urllib.request.Request(url,data=data,headers={"Authorization":"Bearer "+token,"Content-Type":content_type},method="POST")
+    try:
+        with urllib.request.urlopen(request,timeout=45) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        # Do not log tokens, request bodies, phone numbers, or response payloads.
+        raise RuntimeError(f"Meta devolvio HTTP {exc.code}. Comproba que respondiste al numero de prueba en las ultimas 24 horas y que el token sigue vigente.") from None
+
+def send(token,phone_id,recipient,payload):
+    body={"messaging_product":"whatsapp","recipient_type":"individual","to":recipient,**payload}
+    response=call(f"{GRAPH}/{phone_id}/messages",token,json.dumps(body).encode("utf-8"),"application/json")
+    if not response.get("messages"): raise RuntimeError("Meta no confirmo la aceptacion del mensaje")
+    return response
+
+def main():
+    token=os.environ.get("TDD_WA_ACCESS_TOKEN","").strip()
+    phone_id=os.environ.get("TDD_WA_PHONE_NUMBER_ID","").strip()
+    recipient=re.sub(r"\D","",os.environ.get("TDD_WA_TEST_RECIPIENT",""))
+    if not token or not phone_id.isdigit() or not 8<=len(recipient)<=15:
+        raise RuntimeError("Faltan secrets TDD_WA_ACCESS_TOKEN, TDD_WA_PHONE_NUMBER_ID o TDD_WA_TEST_RECIPIENT")
+    raw=os.environ.get("REPORT_DATE","").strip()
+    target=datetime.strptime(raw,"%Y-%m-%d").date() if raw else datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
+    rows=read(87091997)
+    proposals=read(0)
+    if len(rows)<2 or len(proposals)<2: raise RuntimeError("No se pudieron consultar las planillas")
+    records=[r for r in rows[1:] if at(r,1)]
+    today=[r for r in records if day(at(r,13))==target]
+    if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
+    pdf=visual_pdf(records,target,proposals)
+    if not pdf.startswith(b"%PDF-"): raise RuntimeError("PDF invalido")
+    boundary="TDD2027UploadBoundary"
+    filename=f"TDD2027_informe_visual_{target.isoformat()}.pdf"
+    fields=[
+        ("messaging_product",b"whatsapp",None),
+        ("type",b"application/pdf",None),
+        ("file",pdf,filename),
+    ]
+    parts=[]
+    for name,value,file_name in fields:
+        header=f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'
+        if file_name: header+=f'; filename="{file_name}"\r\nContent-Type: application/pdf'
+        parts.append(header.encode()+b"\r\n\r\n"+value+b"\r\n")
+    parts.append(f"--{boundary}--\r\n".encode())
+    uploaded=call(f"{GRAPH}/{phone_id}/media",token,b"".join(parts),f"multipart/form-data; boundary={boundary}")
+    media_id=uploaded.get("id")
+    if not media_id: raise RuntimeError("Meta no devolvio ID del PDF cargado")
+    # An outbound freeform document requires a customer service window opened by an inbound user message.
+    caption=f"TDD 2027 | Informe de asistencia {target.strftime('%d/%m/%Y')} | {count(today)} DNI unicos presentes. Documento visual sin nomina."
+    send(token,phone_id,recipient,{"type":"document","document":{"id":media_id,"filename":filename,"caption":caption}})
+    print("Meta acepto el PDF visual con resumen de asistencia para el destinatario de prueba.")
+
+if __name__=="__main__":
+    main()
