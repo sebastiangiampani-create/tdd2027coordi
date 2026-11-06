@@ -1,0 +1,39 @@
+{
+  "source_project": "appgprj_6aedd7c4f2e48191af1272d332629357",
+  "source_url": "https://consultor-tdd-2027-prueba.guido-spano-2336.chatgpt.site/",
+  "source_version": 12,
+  "source_commit": "2c11e3a12ddfc11977b70577c88939ed5b4ed885",
+  "source_files": [
+    {
+      "path": "assets/cross.js",
+      "sha256": "5844fde21c9944b54e612386858a180a21ffef38aa227a04a5b74bcb3360f9b0"
+    },
+    {
+      "path": "assets/em-logo-footer.svg",
+      "sha256": "4105134c484100c0627036f8ddddd5b8bb77722cbf57900db36dbfc4e1d038fb"
+    },
+    {
+      "path": "assets/em-logo-header.svg",
+      "sha256": "81d8f84b9f26d45cf771683fad9c5b8376e6fbb65939532371d2102b21cf15da"
+    },
+    {
+      "path": "assets/expected.js",
+      "sha256": "450e3c4865f3585a75d83e3d9d830f1af539eb850d2c26f50e217a5834db21d6"
+    },
+    {
+      "path": "assets/ministerio-footer.svg",
+      "sha256": "8ae1aa139fc3dd87abb859d3855c7777c7f47c5fcc877c62048a6ffca56b2c5a"
+    },
+    {
+      "path": "assets/xlsx.full.min.js",
+      "sha256": "c9506197caf809a075b6dee1da0d36fb19da7158ffe8a88e7b0c96c5d8623c99"
+    },
+    {
+      "path": "index.html",
+      "sha256": "27d659568c83e977e81d4722c2a4da53eefc01271ec8ab56fc0c48bf847142b1"
+    }
+  ],
+  "intentional_changes": {
+    "assets/cross.js": "Únicamente el texto del estado: Con asistencia → Con registro."
+  }
+}
