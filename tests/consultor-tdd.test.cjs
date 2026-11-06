@@ -98,3 +98,13 @@ test('ejecuta el frontend original: carga, filtros combinados, gráficos, ordena
  q('chart-metric').value='teachers';await q('chart-metric').emit('change');const teacherGraph=q('chart-dependency').querySelector('svg'),teacherBars=descendants(teacherGraph,'rect').filter(b=>b.getAttribute('data-series')==='Participación');assert.equal(teacherBars[0].getAttribute('data-count'),'2');assert(q('chart-school-caption').textContent.includes('sin previsión'));
 });
 module.exports={openApp,fixture,descendants};
+
+test('el HTML independiente conserva el original y todos los recursos existen',()=>{
+ const standalone=fs.readFileSync(path.join(app,'../consultor-tdd-2027.html'),'utf8');
+ assert.equal(standalone,html.replaceAll('src="assets/','src="consultor-tdd/assets/'));
+ for(const match of standalone.matchAll(/src="(consultor-tdd\/assets\/[^"?]+)/g)) assert.ok(fs.existsSync(path.join(app,'..',match[1])),match[1]);
+ const portal=fs.readFileSync(path.join(app,'../portal.html'),'utf8');
+ assert.ok(portal.includes('href="consultor-informes.html"'));
+ assert.ok(portal.includes('href="consultor-tdd-2027.html"'));
+ assert.equal(sha(fs.readFileSync(path.join(app,'../consultor-informes.html'))),'f095c12b877c8c88397c91f566a026f937951e766b385ba9c9ac67fac0b3bdaa');
+});

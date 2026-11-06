@@ -14,6 +14,6 @@ Los previstos docentes de referencia son DEM 2.045, DET 1.393, DENS 113 y DEA 30
 
 ## Integración y validación
 
-El portal enlaza a `consultor-tdd/`. `consultor-informes.html` redirige a esa carpeta para conservar los enlaces existentes. No se modifican otras herramientas ni el sitio original de Work.
+El portal agrega un acceso independiente a `consultor-tdd-2027.html`. Ese HTML conserva el contenido original y utiliza los recursos de `consultor-tdd/assets/`. Se conservan íntegros `consultor-informes.html`, todos los accesos anteriores del portal y el sitio original de Work. La carpeta `consultor-tdd/` también conserva la entrada original recuperada.
 
 Pruebas: `node --test tests/consultor-tdd.test.cjs`. Incluyen procedencia del código, DNI únicos, registros sin convocatoria, filtros combinados, gráficos y lectura del XLSX generado por el código original.
