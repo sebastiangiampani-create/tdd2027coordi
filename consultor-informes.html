@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultor de informes | TDD 2027 | Prueba aislada</title>
+<style>
+:root{--ink:#153d65;--navy:#103f70;--blue:#2165a1;--bg:#f2f6fa;--line:#dce6f1;--muted:#516b81}
+*{box-sizing:border-box}body{font:15px system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);margin:0}
+header{background:#fff;border-bottom:1px solid var(--line);padding:15px max(18px,calc((100vw - 1150px)/2))}
+header img{width:260px;max-width:78%}main{max-width:1150px;margin:22px auto 50px;padding:0 18px}
+a{color:var(--blue)}.back{display:inline-block;margin:0 0 15px}.lead{color:var(--muted);max-width:850px}
+h1{font-size:clamp(25px,3vw,36px);margin:0 0 7px}h2{font-size:20px;margin:0 0 13px}section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin:17px 0;box-shadow:0 2px 12px #153d650a}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tile{border:1px solid var(--line);border-radius:11px;padding:14px;background:#f7fafc}.tile strong{display:block;font-size:22px}
+textarea,input,select,button{font:inherit;border-radius:9px;padding:11px;border:1px solid #b7cbe0}
+textarea{display:block;width:100%;min-height:85px;resize:vertical}label{display:block;font-weight:650;margin:7px 0}
+button{background:var(--navy);color:#fff;cursor:pointer;margin:4px 5px 4px 0}button:disabled{opacity:.5;cursor:not-allowed}
+button.subtle{background:#fff;color:var(--navy)}.samples{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}.samples button{background:#eaf2fa;color:#163f65}
+.info{color:var(--muted);font-size:13px;line-height:1.5}.warning{border-left:4px solid #b76e13;padding:11px;background:#fff7e9}
+.status{white-space:pre-wrap;font-weight:600;margin:12px 0}.scroll{overflow:auto;max-height:600px}
+table{border-collapse:collapse;width:100%;min-width:610px}td,th{padding:10px 11px;border-bottom:1px solid var(--line);text-align:left}th{background:#eaf2fa;position:sticky;top:0}
+tr:nth-child(even){background:#f8fafc}.chart{display:grid;gap:9px}.barline{display:grid;grid-template-columns:minmax(110px,1.4fr) minmax(120px,3fr) 70px;gap:10px;align-items:center;font-size:13px}.track{height:15px;background:#e8eef4;border-radius:6px;overflow:hidden}.fill{background:var(--blue);height:100%}
+footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:25px 0;border-top:1px solid var(--line)}footer img{max-height:53px;max-width:40%}
+@media print{header,.back,.noprint,.samples,footer{display:none!important}body{background:white}section{box-shadow:none;break-inside:avoid}.scroll{max-height:none}main{max-width:100%}}
+</style>
+</head>
+<body>
+<header><img src="assets/em-logo-header.svg" alt="Escuela de Maestros"></header>
+<main>
+<a class="back" href="portal.html">← Volver al portal</a>
+<h1>Consultor de informes · TDD 2027</h1>
+<p class="lead">Versión experimental, independiente del sistema en producción. Consultas en lenguaje natural con cálculos determinísticos y datos en modo lectura. Ninguna pregunta se envía a una API de IA.</p>
+<section class="noprint">
+<h2>Origen de datos</h2>
+<div class="grid">
+<div class="tile"><strong id="sourceTag">Google Sheets</strong><span id="loadSummary">Preparando lectura de Asistencias…</span></div>
+<div class="tile"><strong>3.853</strong><span>Universo UM, solo para indicadores globales; no es una previsión por escuela</span></div>
+<div class="tile"><strong id="expectedTag">Sin padrón</strong><span>Previstos por escuela y turno; cargar CSV opcional para porcentajes institucionales</span></div>
+</div>
+<p><button id="refresh">Actualizar asistencia desde Google Sheets</button></p>
+<details><summary>Importar CSV alternativo / previsiones por escuela y turno</summary>
+<p class="info">La asistencia CSV respeta la estructura original: DNI (columna B), establecimiento (H), dependencia funcional (F), área (J), fecha de capacitación (N), turno (O). También se admiten encabezados equivalentes.</p>
+<label for="attendance">CSV de asistencias (sustituye temporalmente la lectura online)</label><input id="attendance" type="file" accept=".csv,text/csv">
+<label for="expected">CSV de previsiones (encabezados: escuela, turno, previstos; opcionales: fecha, dependencia)</label><input id="expected" type="file" accept=".csv,text/csv">
+<p class="info">El archivo de previsiones debe corresponder a la misma población y período que la consulta. Una cifra ausente o cero no se utiliza como denominador válido.</p>
+</details>
+<p id="loadStatus" class="status" role="status"></p>
+</section>
+<section>
+<h2>Escribí tu consulta</h2>
+<div class="samples noprint">
+<button data-q="Mostrame las 20 escuelas con menor participación">20 escuelas con menor participación</button>
+<button data-q="¿Qué escuelas del turno tarde tuvieron menos del 60 % de asistencia?">Escuelas de tarde bajo 60 %</button>
+<button data-q="Compará la asistencia de DEM, DET, DENS y DEA">Comparar dependencias</button>
+<button data-q="¿Qué porcentaje del universo de 3.853 docentes ya participó?">Cobertura total UM</button>
+<button data-q="¿Cuántos docentes asistieron por escuela y turno?">Asistencia por escuela y turno</button>
+</div>
+<label for="question">Consulta</label>
+<textarea id="question">¿Cuántos docentes asistieron por escuela y turno?</textarea>
+<div class="noprint"><button id="run">Generar informe</button><button class="subtle" id="excel" disabled>Exportar Excel</button><button class="subtle" id="csv" disabled>Exportar CSV</button><button class="subtle" id="pdf" disabled>Imprimir / PDF</button></div>
+<div id="resultStatus" class="status" role="status"></div>
+<div id="audit" class="info"></div>
+<div id="metrics" class="grid"></div>
+<div id="results" class="scroll"></div>
+<h2 id="chartTitle" hidden>Gráfico</h2><div id="chart" class="chart"></div>
+</section>
+<footer><img src="assets/em-logo-footer.svg" alt="Escuela de Maestros"><img src="assets/ministerio-footer.svg" alt="Ministerio de Educación"></footer>
+<section id="escuelas-convocadas"><h2>Escuelas convocadas · asistencia por área</h2><p class="info">Cruce de convocatoria y asistencia por escuela, área, turno y día. Las áreas convocadas sin asistentes permanecen visibles. La dependencia funcional se toma de la base de asistencia: las escuelas sin dependencia identificable no se atribuyen automáticamente a una dependencia. Solo lectura, sin modificar las planillas.</p><div class="grid noprint"><label>Escuela<input id="xc-school" placeholder="Nombre o número de escuela"></label><label>Turno<select id="xc-shift"><option>Vespertino</option><option>Mañana</option><option>Tarde</option><option value="">Todos</option></select></label><label>Dependencia funcional<select id="xc-dependency"><option value="">Todas</option></select></label><label>Comisión<select id="xc-commission"><option value="">Todas</option></select></label><label>Área<select id="xc-area"><option value="">Todas</option></select></label><label>Día<select id="xc-day"><option value="">Todos</option></select></label><label>Estado<select id="xc-state"><option value="">Todas</option><option value="zero">Sin asistencia registrada</option><option value="yes">Con asistencia</option><option value="review">Revisar coincidencia</option></select></label></div><p class="noprint"><button id="xc-reload">Actualizar convocatorias</button><button id="xc-export" hidden disabled>Exportar CSV</button><button id="xc-excel" disabled>Exportar Excel</button><button id="xc-pdf" hidden disabled>Imprimir / PDF</button></p><p class="status" id="xc-status">Cargando convocatorias…</p><div class="grid" id="xc-metrics"></div><div id="xc-charts" class="grid" aria-live="polite"></div><div class="scroll" id="xc-results"></div><p class="info">El conteo se realiza por DNI único dentro de cada comisión, escuela, área, turno y día. «Sin asistencia registrada» significa que no se encontró una coincidencia exacta; las coincidencias parciales se señalan para revisión. Los días sin datos de asistencia no se clasifican como ausencia.</p></section></main>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+'use strict';
+const SHEET_ID='1hznlu4j_Ip4KqYNpMrdhvbJvnHrPl0hOIJ6qBOsTRb4';
+const UNIVERSE_UM=3853;
+const $=id=>document.getElementById(id),clean=v=>String(v??'').trim(),norm=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const html=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const numeric=v=>Number(String(v??'').replace(/\./g,'').replace(',','.'));
+const dni=v=>clean(v).replace(/\D/g,'');
+const shift=v=>{let s=norm(v);return /manana|^tm$/.test(s)?'Mañana':/tarde|^tt$/.test(s)?'Tarde':/vesp|noche|^tv$/.test(s)?'Vespertino':(clean(v)||'Sin dato')};
+const dep=v=>{let m=norm(v).match(/\b(dem|det|dens|dea)\b/);return m?m[1].toUpperCase():'Sin identificar'};
+let attendance=[],expected=[],source='Google Sheets',updated=null,last=[],columns=[],lastSummary='',lastMeta={};
+const parseCSV=t=>{let out=[],row=[],value='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(c==='"'){if(q&&t[i+1]==='"'){value+='"';i++}else q=!q;}else if(c===','&&!q){row.push(value);value='';}else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&t[i+1]==='\n')i++;row.push(value);if(row.some(x=>clean(x)))out.push(row);row=[];value='';}else value+=c;}row.push(value);if(row.some(x=>clean(x)))out.push(row);return out;};
+function dateKey(v){const s=clean(v),m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/)||null;return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):(s.match(/^\d{4}-\d{2}-\d{2}/)||[])[0]||''}
+function readRows(raw){return raw.map(r=>({id:dni(r[1]),school:clean(r[7]),dependency:clean(r[5]),area:clean(r[9]),date:dateKey(r[13]||r[0]),shift:shift(r[14]),commission:clean(r[11])})).filter(r=>r.id&&r.school)}
+function fromCSV(table){const first=table[0]||[],h=first.map(norm),lookup=(aliases,defaultIndex)=>{const at=h.findIndex(k=>aliases.includes(k));return at>=0?at:defaultIndex};
+ const ix={id:lookup(['dni','documento'],1),school:lookup(['establecimiento','escuela'],7),dep:lookup(['dep. fun','dep fun','dependencia funcional','dependencia'],5),area:lookup(['area','área'],9),date:lookup(['fecha de capacitacion','fecha capacitación','fecha'],13),shift:lookup(['turno'],14),com:lookup(['comision','comisión'],11)};
+ return table.slice(1).map(r=>({id:dni(r[ix.id]),school:clean(r[ix.school]),dependency:clean(r[ix.dep]),area:clean(r[ix.area]),date:dateKey(r[ix.date]),shift:shift(r[ix.shift]),commission:clean(r[ix.com])})).filter(r=>r.id&&r.school);}
+function status(){const unique=new Set(attendance.map(r=>r.id));$('loadSummary').textContent=attendance.length+' registros · '+unique.size+' DNI únicos';$('expectedTag').textContent=expected.length?expected.length+' previsiones':'Sin padrón';$('sourceTag').textContent=source;$('loadStatus').textContent='Fuente: '+source+' · Última carga: '+(updated?updated.toLocaleString('es-AR'):'sin datos')+' · Solo lectura.';}
+function gvizValue(c){if(!c)return '';if(c.f!=null)return clean(c.f);if(c.v==null)return '';if(typeof c.v==='string'&&c.v.startsWith('Date(')){const m=c.v.match(/^Date\((\d+),(\d+),(\d+)/);return m?String(m[3]).padStart(2,'0')+'/'+String(+m[2]+1).padStart(2,'0')+'/'+m[1]:'';}return clean(c.v);}
+function loadLive(){return new Promise((resolve,reject)=>{const callback='__tdd_consult_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let done=false;
+ const finish=(err,value)=>{if(done)return;done=true;clearTimeout(timer);tag.remove();delete window[callback];err?reject(err):resolve(value)};
+ window[callback]=res=>{if(res.status==='error'||!res.table)return finish(new Error(clean(res.errors?.[0]?.message)||'Sin tabla de Google Sheets'));const cols=(res.table.cols||[]).map(c=>norm(c.label||c.id));if(cols.length<15)return finish(new Error('La hoja no tiene las 15 columnas esperadas'));
+ const aliases=[['fecha'],['dni'],['nombre'],['apellido'],['correo'],['dep. fun','dep fun','dependencia funcional'],['de/region','de region'],['establecimiento'],['tipo de formacion'],['area'],['codigo'],['comision'],['encuentro'],['fecha de capacitacion'],['turno']];
+ const indexes=aliases.map((arr,i)=>{if(i>=13)return i;const j=cols.findIndex((v,k)=>k<13&&arr.includes(v));return j<0?i:j});
+ finish(null,(res.table.rows||[]).map(row=>indexes.map(i=>gvizValue((row.c||[])[i]))));};
+ tag.onerror=()=>finish(new Error('No se pudo leer Google Sheets'));
+ const timer=setTimeout(()=>finish(new Error('Tiempo de espera agotado al consultar Google Sheets')),25000);
+ tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'87091997',range:'A:O',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
+ document.head.append(tag);});}
+async function refresh(){ $('loadStatus').textContent='Consultando Asistencias de Google Sheets…';$('refresh').disabled=true;try{const raw=await loadLive();attendance=readRows(raw);source='Google Sheets · Asistencias';updated=new Date();status();document.dispatchEvent(new Event('tdd-attendance-ready'))}catch(e){$('loadStatus').textContent='Error de lectura: '+e.message+'. Podés usar CSV como alternativa.'}finally{$('refresh').disabled=false}}
+$('refresh').onclick=refresh;
+$('attendance').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{attendance=fromCSV(parseCSV((await file.text()).replace(/^\uFEFF/,'')));source='CSV local · '+file.name;updated=new Date();status();document.dispatchEvent(new Event('tdd-attendance-ready'))}catch(err){$('loadStatus').textContent='CSV inválido: '+err.message;}};
+$('expected').onchange=async e=>{const file=e.target.files[0];if(!file)return;const records=parseCSV((await file.text()).replace(/^\uFEFF/,''));const head=(records.shift()||[]).map(norm),idx=k=>head.indexOf(k);if(['escuela','turno','previstos'].some(k=>idx(k)<0)){$('loadStatus').textContent='Faltan encabezados: escuela,turno,previstos';return}
+ const prior=expected;const parsed=records.map(r=>({school:clean(r[idx('escuela')]),shift:shift(r[idx('turno')]),n:numeric(r[idx('previstos')]),date:idx('fecha')>=0?dateKey(r[idx('fecha')]):'',dependency:idx('dependencia')>=0?dep(r[idx('dependencia')]):''})).filter(x=>x.school&&Number.isFinite(x.n)&&x.n>=0);
+ const seen=new Set();for(const r of parsed){const key=[norm(r.school),r.shift,r.date,r.dependency].join('|');if(seen.has(key)){$('loadStatus').textContent='Previsiones duplicadas para '+r.school+' / '+r.shift+'. Archivo rechazado.';expected=prior;return}seen.add(key)}
+ expected=parsed;status();};
+document.querySelectorAll('[data-q]').forEach(button=>button.onclick=()=>{$('question').value=button.dataset.q;run()});
+function parseQuestion(q){const s=norm(q);const matchShift=s.match(/(?:turno\s+|del\s+turno\s+)(manana|tarde|vespertino|tm|tt|tv)/);const shifts=matchShift?[shift(matchShift[1])]:[];
+ const mt=s.match(/(?:menos(?:\s+del)?|inferior(?:\s+al)?)\s+(\d+(?:[.,]\d+)?)\s*%/);const threshold=mt?Number(mt[1].replace(',','.')):null;
+ const top=s.match(/(?:las?\s+)?(\d{1,3})\s+escuelas/),date=s.match(/\b(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{4}))?\b/);
+ let mode=/universo|3853|3\.853/.test(s)?'universe':/dem,?\s*det|dependencias?|compar[ae].*(?:dem|det|dens|dea)/.test(s)?'dependency':'school';
+ const wantsAbsent=/no\s+(?:registraron|registraron\s+su)\s+asistencia|todavia no.*asist|convocados.*no.*asist/.test(s);
+ if(wantsAbsent)mode='missing';
+ const order=/menor|menos participacion|menos asistencia/.test(s)?'asc':/mayor|mas participacion|mas asistencia/.test(s)?'desc':'alpha';
+ return {mode,shifts,threshold,top:top?Math.min(500,Number(top[1])):null,date:date?(date[3]||'2026')+'-'+date[2].padStart(2,'0')+'-'+date[1].padStart(2,'0'):null,order,text:s};}
+function getExpected(school,turno,date){const matches=expected.filter(x=>norm(x.school)===norm(school)&&x.shift===turno&&(!x.date||x.date===date));if(matches.length!==1)return null;return matches[0].n>0?matches[0].n:null}
+function labelMetric(k,v){return '<div class="tile"><span>'+html(k)+'</span><strong>'+html(v)+'</strong></div>'}
+function unique(r){return new Set(r.map(x=>x.id)).size}
+function fmt(v){return v===null?'Sin dato':Number(v).toLocaleString('es-AR',{maximumFractionDigits:1})}
+function run(){const question=clean($('question').value);if(!question){$('resultStatus').textContent='Escribí una consulta.';return}if(!attendance.length){$('resultStatus').textContent='No hay asistencias cargadas.';return}
+ const q=parseQuestion(question);$('resultStatus').textContent='';$('metrics').innerHTML='';$('chart').innerHTML='';$('chartTitle').hidden=true;
+ if(q.mode==='missing'){$('resultStatus').textContent='No se puede identificar convocados sin registro: el archivo actual contiene asistentes, no el padrón individual de convocados. Hace falta incorporar una fuente de DNI previstos, en modo lectura.';last=[];columns=[];setExport(false);return;}
+ const filtered=attendance.filter(r=>(!q.shifts.length||q.shifts.includes(r.shift))&&(!q.date||r.date===q.date));last=[];columns=[];
+ if(q.mode==='universe'){const observed=unique(filtered),pct=100*observed/UNIVERSE_UM;columns=['Indicador','Valor'];last=[{Indicador:'Docentes únicos con asistencia',Valor:observed},{Indicador:'Universo UM',Valor:UNIVERSE_UM},{Indicador:'Cobertura del universo (%)',Valor:+pct.toFixed(1)}];$('metrics').innerHTML=labelMetric('Docentes únicos',fmt(observed))+labelMetric('Universo UM',fmt(UNIVERSE_UM))+labelMetric('Cobertura',fmt(pct)+' %');lastSummary='Cobertura global del universo UM (DNI distintos, no suma de jornadas).';}
+ else if(q.mode==='dependency'){const deps=['DEM','DET','DENS','DEA'],data=deps.map(k=>({Dependencia:k,'Docentes únicos':unique(filtered.filter(r=>dep(r.dependency)===k))}));const unknown=unique(filtered.filter(r=>dep(r.dependency)==='Sin identificar'));if(unknown)data.push({Dependencia:'Sin identificar','Docentes únicos':unknown});columns=Object.keys(data[0]);last=data;lastSummary='Participación por dependencia. No se calculan porcentajes respecto de convocados sin el padrón correspondiente.';}
+ else {const groups=new Map();for(const r of filtered){const key=norm(r.school)+'|'+r.shift;if(!groups.has(key))groups.set(key,{school:r.school,shift:r.shift,ids:new Set()});groups.get(key).ids.add(r.id)}
+ // Para visibilizar instituciones con cero asistencia, incorporar solo las que existen en la base de previstos.
+ for(const x of expected){if(q.shifts.length&&!q.shifts.includes(x.shift))continue;if(q.date&&x.date&&q.date!==x.date)continue;const key=norm(x.school)+'|'+x.shift;if(!groups.has(key))groups.set(key,{school:x.school,shift:x.shift,ids:new Set()});}
+ const data=[...groups.values()].map(g=>{const n=getExpected(g.school,g.shift,q.date),v=g.ids.size,p=n===null?null:100*v/n;return {Escuela:g.school,Turno:g.shift,Asistentes:v,Previstos:n,Cumplimiento:p===null?null:+p.toFixed(1)}}).filter(r=>q.threshold===null||r.Cumplimiento!==null&&r.Cumplimiento<q.threshold);
+ data.sort((a,b)=>{if(q.order==='alpha')return a.Escuela.localeCompare(b.Escuela,'es')||a.Turno.localeCompare(b.Turno,'es');const av=a.Cumplimiento??(q.order==='asc'?Infinity:-Infinity),bv=b.Cumplimiento??(q.order==='asc'?Infinity:-Infinity);return (q.order==='asc'?av-bv:bv-av)||a.Escuela.localeCompare(b.Escuela,'es')});
+ columns=['Escuela','Turno','Asistentes','Previstos','Cumplimiento'];last=q.top?data.slice(0,q.top):data;const unavailable=last.filter(r=>r.Previstos===null).length;
+ lastSummary=q.threshold!==null?'Escuelas y turnos con cumplimiento inferior al '+fmt(q.threshold)+' %. Las filas sin previsión se excluyen del umbral.':unavailable+' filas sin denominador escolar verificable. Los asistentes son DNI únicos por establecimiento y turno.';
+ }
+ lastMeta={source,updated:updated?.toISOString()||'',question,applied:'Turno: '+(q.shifts.join(', ')||'todos')+' · Fecha: '+(q.date||'todas')+' · Modo: '+q.mode+' · Umbral: '+(q.threshold===null?'ninguno':q.threshold+' %')};
+ $('audit').textContent='Fuente: '+source+' · Actualización: '+(updated?updated.toLocaleString('es-AR'):'sin fecha')+' · '+lastMeta.applied+' · '+lastSummary;
+ $('resultStatus').textContent=last.length+' filas en el informe.';
+ render();setExport(last.length>0);
+}
+function render(){const output=$('results');output.replaceChildren();if(!last.length){output.textContent='Sin resultados para la consulta.';return}
+ const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');for(const c of columns){const th=document.createElement('th');th.textContent=c;tr.append(th)}head.append(tr);table.append(head);
+ const body=document.createElement('tbody');for(const r of last){const row=document.createElement('tr');for(const c of columns){const cell=document.createElement('td');cell.textContent=r[c]===null?'Sin dato':c==='Cumplimiento'?fmt(r[c])+' %':r[c];row.append(cell)}body.append(row)}table.append(body);output.append(table);
+ const label=columns.includes('Escuela')?'Escuela':columns.includes('Dependencia')?'Dependencia':null;
+ if(!label)return;
+ const points=last.slice(0,20),total=Math.max(1,...points.map(r=>Number(r.Cumplimiento??r['Docentes únicos']??0)));
+ $('chartTitle').hidden=false;const chart=$('chart');for(const r of points){const val=Number(r.Cumplimiento??r['Docentes únicos']??0),line=document.createElement('div');line.className='barline';const name=document.createElement('span');name.textContent=r[label]+(r.Turno?' · '+r.Turno:'');const track=document.createElement('div');track.className='track';const fill=document.createElement('div');fill.className='fill';fill.style.width=Math.max(0,Math.min(100,100*val/total))+'%';track.append(fill);const n=document.createElement('strong');n.textContent=r.Cumplimiento===null&&columns.includes('Cumplimiento')?'Sin dato':columns.includes('Cumplimiento')?fmt(val)+' %':fmt(val);line.append(name,track,n);chart.append(line)}}
+function setExport(ready){for(const id of ['csv','excel','pdf'])$(id).disabled=!ready}
+$('run').onclick=run;
+function matrix(){return [columns,...last.map(row=>columns.map(c=>row[c]===null?'Sin dato':row[c]))]}
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$('csv').onclick=()=>{if(!last.length)return;const csv=matrix().map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');download(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'consultor-tdd2027.csv')};
+$('excel').onclick=()=>{if(!last.length)return;if(typeof XLSX==='undefined'){$('resultStatus').textContent='No se pudo cargar la biblioteca de Excel. Usá CSV.';return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(matrix()),'Informe');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(Object.entries(lastMeta)),'Trazabilidad');XLSX.writeFile(wb,'consultor-tdd2027.xlsx')};
+$('pdf').onclick=()=>{if(last.length)window.print()};
+refresh();
+</script>
+<script>
+(()=>{
+'use strict';
+const q=id=>document.getElementById(id),normal=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,''),trim=v=>String(v??'').trim();
+const dayNames=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+let calls=[],report=[],loaded=false,loading=false;
+const dayOf=v=>{const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return '';const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));return d.getUTCFullYear()===+m[1]&&d.getUTCMonth()===+m[2]-1?dayNames[d.getUTCDay()]:''};
+const cell=c=>{if(!c)return '';if(c.f!==undefined&&c.f!==null&&c.f!=='')return trim(c.f);return trim(c.v)};
+const unique=arr=>[...new Map(arr.filter(Boolean).map(v=>[normal(v),v])).values()].sort((a,b)=>a.localeCompare(b,'es'));
+function jsonp(params){return new Promise((resolve,reject)=>{const cb='__tdd_xc_'+Math.random().toString(36).slice(2),tag=document.createElement('script');let done=false;function finish(err,val){if(done)return;done=true;clearTimeout(timer);delete window[cb];tag.remove();err?reject(err):resolve(val)}
+window[cb]=v=>v?.status==='error'||!v?.table?finish(new Error(v?.errors?.[0]?.message||'Respuesta inválida de Google Sheets')):finish(null,v.table);
+tag.onerror=()=>finish(new Error('No se pudo conectar a la planilla de convocatorias'));const timer=setTimeout(()=>finish(new Error('La planilla tardó demasiado')),25000);
+tag.src='https://docs.google.com/spreadsheets/d/1x-cRhsulmABI8wyB87xKeZw4Kq1GIMb4XCEzfaYozww/gviz/tq?'+new URLSearchParams({...params,headers:'1',tqx:'out:json;responseHandler:'+cb,_:Date.now()});document.head.append(tag)})}
+async function loadCalls(){if(loading)return;loading=true;loaded=false;q('xc-status').textContent='Leyendo todas las páginas de la convocatoria…';try{
+let all=[],mapping=null;for(let offset=0;offset<50000;offset+=500){const table=await jsonp({range:'A:G',tq:'select A,B,C,D,E,F,G limit 500 offset '+offset});
+let rows=table.rows||[];if(mapping===null){const keys=['comision','escuelas','area','turno','dia','horario','sede'];const labels=(table.cols||[]).map(c=>normal(c.label||c.id));mapping=keys.map(k=>labels.findIndex(x=>x===k||(k==='escuelas'&&x==='escuela')));if(mapping.some(i=>i<0)){const first=(rows[0]?.c||[]).map(c=>normal(cell(c)));mapping=keys.map(k=>first.findIndex(x=>x===k||(k==='escuelas'&&x==='escuela')));if(mapping.some(i=>i<0))throw Error('No se pudieron identificar las siete columnas de Convocatoria TDD 2027');rows=rows.slice(1)}}
+for(const row of rows){const cells=row.c||[],values=mapping.map(i=>cell(cells[i]));const schools=values[1].split(/\r?\n|;/).map(trim).filter(Boolean);for(const school of schools){if(!values[3]||!values[4])continue;all.push({school,area:values[2],shift:shift(values[3]),day:values[4],commission:values[0]})}}
+q('xc-status').textContent='Leyendo convocatorias: '+all.length+' asignaciones…';if((table.rows||[]).length<500)break}
+calls=all;loaded=true;const areas=unique(calls.map(r=>r.area)),days=unique(calls.map(r=>r.day));for(const [id,items] of [['xc-area',areas],['xc-day',days],['xc-commission',unique(calls.map(r=>r.commission))]]){const select=q(id);select.replaceChildren();const first=document.createElement('option');first.value='';first.textContent='Todos';select.append(first);for(const v of items){const o=document.createElement('option');o.value=v;o.textContent=v;select.append(o)}}
+render()}catch(e){q('xc-status').textContent='Error de convocatoria: '+e.message+' (no se muestran ceros sin una lectura completa).'}finally{loading=false}}
+function shift(v){const x=normal(v);return x.includes('vespert')||x.includes('noche')||x==='tv'?'Vespertino':x.includes('tarde')||x==='tt'?'Tarde':x.includes('manana')||x==='tm'?'Mañana':trim(v)}
+function render(){if(!loaded)return;const depSelect=q('xc-dependency');const previous=depSelect.value;const dependencies=unique(attendance.map(a=>a.dependency));depSelect.replaceChildren();const all=document.createElement('option');all.value='';all.textContent='Todas';depSelect.append(all);for(const v of dependencies){const option=document.createElement('option');option.value=v;option.textContent=v;depSelect.append(option)}depSelect.value=dependencies.includes(previous)?previous:'';if(!attendance.length){q('xc-status').textContent='Convocatoria cargada ('+calls.length+' asignaciones), pero todavía no hay asistencias. Actualizá la fuente de asistencias antes de calcular.';q('xc-results').replaceChildren();q('xc-export').disabled=true;q('xc-excel').disabled=true;q('xc-pdf').disabled=true;return}
+const school=normal(q('xc-school').value),shiftFilter=q('xc-shift').value,area=normal(q('xc-area').value),day=normal(q('xc-day').value),state=q('xc-state').value;
+const commission=normal(q('xc-commission').value),dependency=normal(q('xc-dependency').value);const depBySchool=new Map();for(const a of attendance){const key=normal(a.school);if(!depBySchool.has(key))depBySchool.set(key,new Set());if(normal(a.dependency))depBySchool.get(key).add(normal(a.dependency))}const selected=calls.filter(r=>(!commission||normal(r.commission)===commission)&&(!dependency||(depBySchool.get(normal(r.school))||new Set()).has(dependency))&&(!school||normal(r.school).includes(school))&&(!shiftFilter||r.shift===shiftFilter)&&(!area||normal(r.area)===area)&&(!day||normal(r.day)===day));
+const groups=new Map();for(const r of selected){const key=[normal(r.school),normal(r.area),normal(r.shift),normal(r.day),normal(r.commission)].join('|');if(!groups.has(key))groups.set(key,{school:r.school,area:r.area,shift:r.shift,day:r.day,commission:r.commission})}
+const byCommission=new Map(),bySchool=new Map(),observed=new Map();
+for(const a of attendance){const date=trim(a.date),d=normal(dayOf(date)),com=normal(a.commission);if(!date||!d||!a.id||dependency&&normal(a.dependency)!==dependency)continue;
+const shiftKey=normal(a.shift),schoolKey=normal(a.school),areaKey=normal(a.area),period=com+'|'+shiftKey+'|'+d;
+if(!observed.has(period))observed.set(period,new Set());observed.get(period).add(date);
+const key=[com,shiftKey,d,schoolKey,areaKey].join('|');if(!byCommission.has(key))byCommission.set(key,new Map());byCommission.get(key).set(a.id,date);
+const schoolKeyFull=[com,shiftKey,d,schoolKey].join('|');if(!bySchool.has(schoolKeyFull))bySchool.set(schoolKeyFull,new Set());bySchool.get(schoolKeyFull).add(areaKey)}
+const full=[...groups.values()].map(g=>{
+const d=normal(g.day),shiftKey=normal(g.shift),com=normal(g.commission),schoolKey=normal(g.school),areaKey=normal(g.area);
+const key=[com,shiftKey,d,schoolKey,areaKey].join('|'),sameSchool=[com,shiftKey,d,schoolKey].join('|');
+const hits=byCommission.get(key),dates=new Set(hits?.values()||[]),candidateDates=observed.get(com+'|'+shiftKey+'|'+d)||new Set();
+let status,count=hits?.size||0;
+if(!com||!d||!candidateDates.size)status='Sin jornada verificable';
+else if(dates.size>1||candidateDates.size>1)status='Revisar jornada';
+else if(count)status='Con asistencia';
+else if(bySchool.has(sameSchool))status='Revisar coincidencia de área';
+else status='Sin asistencia registrada';
+return {Escuela:g.school,'Dependencia funcional': [...(depBySchool.get(schoolKey)||[])].join(' / ')||'Sin identificar',Turno:g.shift,Área:g.area,Día:g.day,Comisión:g.commission,Asistentes:count,Estado:status};
+});
+report=full.filter(r=>!state||(state==='zero'&&r.Estado==='Sin asistencia registrada')||(state==='yes'&&r.Estado==='Con asistencia')||(state==='review'&&r.Estado.includes('Revisar'))).sort((a,b)=>a.Asistentes-b.Asistentes||a.Escuela.localeCompare(b.Escuela,'es')||a.Área.localeCompare(b.Área,'es'));
+const charts=q('xc-charts');charts.replaceChildren();const chartGroups=[['Área','Área'],['Dependencia funcional','Dependencia funcional'],['Turno','Turno'],['Comisión','Comisión']];for(const [title,key] of chartGroups){const totals=new Map();for(const row of report){const label=String(row[key]||'Sin identificar');totals.set(label,(totals.get(label)||0)+Number(row.Asistentes||0))}const block=document.createElement('section');block.style.cssText='padding:14px;border:1px solid #d8e1e8;border-radius:12px;min-width:0';const h=document.createElement('h3');h.textContent='Asistentes por '+title;block.append(h);const ordered=[...totals].sort((a,b)=>b[1]-a[1]).slice(0,15),max=Math.max(1,...ordered.map(x=>x[1]));if(!ordered.length){const p=document.createElement('p');p.textContent='Sin datos para los filtros seleccionados';block.append(p)}for(const [label,n] of ordered){const line=document.createElement('div');line.style.cssText='margin:9px 0;font-size:13px';const name=document.createElement('div');name.textContent=label+' · '+n;const bar=document.createElement('div');bar.style.cssText='height:9px;border-radius:5px;background:#d8e1e8;overflow:hidden';const fill=document.createElement('div');fill.style.cssText='height:100%;background:#126e65;width:'+Math.round(100*n/max)+'%';bar.append(fill);line.append(name,bar);block.append(line)}charts.append(block)}const metrics=q('xc-metrics');metrics.replaceChildren();for(const [label,num] of [['Escuela/área/día convocadas',full.length],['Sin asistencia registrada',full.filter(r=>r.Estado==='Sin asistencia registrada').length],['Con asistencia',full.filter(r=>r.Estado==='Con asistencia').length],['Para revisar',full.filter(r=>r.Estado.includes('Revisar')).length],['Sin jornada verificable',full.filter(r=>r.Estado==='Sin jornada verificable').length]]){const tile=document.createElement('div');tile.className='tile';const b=document.createElement('strong');b.textContent=num;tile.append(b,document.createTextNode(label));metrics.append(tile)}
+q('xc-status').textContent='Convocatorias leídas: '+calls.length+' · Asistencias: '+attendance.length+' · Filas mostradas: '+report.length+'. Cruce por comisión, escuela, área, turno y día. Las jornadas ambiguas se marcan para revisión.';
+const results=q('xc-results');results.replaceChildren();if(!report.length){results.textContent='No hay coincidencias para estos filtros. Revisá el día, el turno y la lectura de las fuentes.';q('xc-export').disabled=true;q('xc-excel').disabled=true;q('xc-pdf').disabled=true;return}
+const keys=Object.keys(report[0]),table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');for(const k of keys){const th=document.createElement('th');th.textContent=k;tr.append(th)}head.append(tr);table.append(head);const body=document.createElement('tbody');for(const row of report){const tr=document.createElement('tr');for(const k of keys){const td=document.createElement('td');td.textContent=row[k];tr.append(td)}body.append(tr)}table.append(body);results.append(table);q('xc-export').disabled=false;q('xc-excel').disabled=false;q('xc-pdf').disabled=false}
+for(const id of ['xc-school','xc-shift','xc-dependency','xc-commission','xc-area','xc-day','xc-state'])q(id).addEventListener(id==='xc-school'?'input':'change',render);
+q('xc-reload').onclick=loadCalls;
+q('xc-export').onclick=()=>{if(!report.length)return;const cols=Object.keys(report[0]),csv=[cols,...report.map(r=>cols.map(k=>r[k]))].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='tdd2027-escuelas-areas-asistencia.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+
+q('xc-excel').onclick=()=>{if(!report.length)return;if(typeof XLSX==='undefined'){q('xc-status').textContent='No se pudo cargar Excel; usá CSV.';return}const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet(report),'Convocatorias y asistencia');const filters=[['Filtro','Valor'],['Escuela',q('xc-school').value],['Dependencia funcional',q('xc-dependency').value||'Todas'],['Turno',q('xc-shift').value||'Todos'],['Comisión',q('xc-commission').value||'Todas'],['Área',q('xc-area').value||'Todas'],['Día',q('xc-day').value||'Todos'],['Estado',q('xc-state').selectedOptions[0]?.textContent||'Todos']];XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(filters),'Filtros aplicados');for(const key of ['Área','Dependencia funcional','Turno','Comisión']){const totals=new Map();for(const row of report){const label=String(row[key]||'Sin identificar');totals.set(label,(totals.get(label)||0)+Number(row.Asistentes||0))}XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([[key,'Asistentes'],...[...totals]]),'Gráfico '+(key==='Dependencia funcional'?'Dependencia':key))}XLSX.writeFile(book,'tdd2027-convocatorias-asistencia.xlsx')};
+q('xc-pdf').onclick=()=>{if(report.length)window.print()};
+document.addEventListener('tdd-attendance-ready',render);
+q('refresh').addEventListener('click',()=>setTimeout(render,1500));q('attendance').addEventListener('change',()=>setTimeout(render,300));
+loadCalls();setTimeout(render,3000);
+})();
+</script></body></html>
