@@ -355,6 +355,22 @@ tag.onerror=()=>fail('No se pudo leer la pestaña Asistencias desde este sitio.'
 timer=setTimeout(()=>fail('La consulta tardó demasiado. Probá actualizar.'),25000);
 tag.src='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+new URLSearchParams({gid:'87091997',range:'A:O',headers:'1',tqx:'out:json;responseHandler:'+callback,_:String(Date.now())});
 document.head.append(tag)}
-$('refresh').addEventListener('click',()=>{proposalsLoaded=false;loadProposals();load()});loadProposals();load();
+const AUTO_REFRESH_MS=2*60*1000;
+let lastRefreshStarted=Date.now();
+function refreshSheetData(){
+ lastRefreshStarted=Date.now();
+ proposalsLoaded=false;
+ loadProposals();
+ load();
+}
+$('refresh').addEventListener('click',refreshSheetData);
+loadProposals();load();
+setInterval(()=>{
+ if(document.visibilityState==='hidden')return;
+ refreshSheetData();
+},AUTO_REFRESH_MS);
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'&&Date.now()-lastRefreshStarted>=AUTO_REFRESH_MS)refreshSheetData();
+});
 
 </script><footer class="em-site-footer" aria-label="Identidad institucional"><img class="em-logo" src="assets/em-logo-footer.svg" alt="Escuela de Maestros"><img class="em-ministerio" src="assets/ministerio-footer.svg" alt="Ministerio de Educación · Buenos Aires Ciudad"></footer><script src="assets/bue-sheet-viewer.js"></script></body></html>
