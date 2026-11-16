@@ -36,8 +36,8 @@ def recipients():
     if EMAIL not in result: raise ValueError("El remitente principal debe permanecer activo")
     return result
 
-BASE={"DEM":2045,"DET":1393,"DENS":113,"DEA":302}
-PLANNED={"Lunes":[356,225,251],"Martes":[283,274,175],"Miércoles":[437,362,305],"Jueves":[268,230,77],"Viernes":[227,205,178]}
+BASE={"DEM":1401,"DET":918,"DENS":69,"DEA":203}
+PLANNED={"Lunes":[264,137,164],"Martes":[202,176,121],"Miércoles":[313,231,216],"Jueves":[168,133,54],"Viernes":[160,150,102]}
 SHIFTS=["Mañana","Tarde","Vespertino"]
 
 def read(gid):
@@ -198,9 +198,9 @@ def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff
     y=H-393
     cards=[("ASISTENCIA ACUMULADA",str(accumulated),"personas distintas"),
            ("COBERTURA DEL DIA",percent(daily,expected),"sobre previstos"),
-           (("COBERTURA DEL UNIVERSO",percent(accumulated,3853),"de 3.853 docentes") if len(shift_names)==len(SHIFTS) else ("TURNOS INCLUIDOS",scope_label,"corte parcial"))]
+           (("COBERTURA DEL UNIVERSO",percent(accumulated,2591),"de 2.591 docentes") if len(shift_names)==len(SHIFTS) else ("TURNOS INCLUIDOS",scope_label,"corte parcial"))]
     if whatsapp_cutoff:
-        cards=[("TOTAL DEL DIA",str(daily),"DNI unicos"),("COBERTURA DEL DIA",percent(daily,expected),"de "+str(expected)+" previstos"),("COBERTURA UNIVERSO",percent(accumulated,3853),str(accumulated)+" de 3.853 docentes")]
+        cards=[("TOTAL DEL DIA",str(daily),"DNI unicos"),("COBERTURA DEL DIA",percent(daily,expected),"de "+str(expected)+" previstos"),("COBERTURA UNIVERSO",percent(accumulated,2591),str(accumulated)+" de 2.591 docentes")]
     gap=9
     cardw=(W-80-gap*2)/3
     for i,(label,value,detail) in enumerate(cards):
@@ -363,9 +363,8 @@ def main():
       </td></tr></table>
       <h2 style="font-size:16px;margin:16px 5px 8px;color:#12395c">Acumulado y cobertura</h2>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>{metric("Asistencia acumulada",count(records),"Personas distintas en todo el período")}{metric("Universo de docentes","3.853","Base de referencia")}</tr>
-      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} asistentes de {total_expected} previstos")}{metric("Cobertura del universo",percent(count(records),3853).replace(".",","),f"{count(records)} de 3.853 docentes")}</tr></table>
-      <div style="padding:9px 6px;font-size:12px;color:#526b80">Asistencia acumulada por jornada: <strong style="color:#092b56">{percent(cumulative,cumulative_expected).replace(".",",")}</strong> · Se contabiliza cada asistente una vez por jornada; puede asistir en días diferentes.</div>
+      <tr>{metric("Asistencia acumulada",count(records),"Personas distintas en todo el período")}{metric("Universo de docentes","2.591","Base de referencia")}</tr>
+      <tr>{metric("Cobertura del día",percent(count(today),total_expected).replace(".",","),f"{count(today)} asistentes de {total_expected} previstos")}{metric("Cobertura del universo",percent(count(records),2591).replace(".",","),f"{count(records)} de 2.591 docentes")}</tr></table>
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Asistencia del día por turno</h2>
       {bar_table(["Turno","Asistentes","Cobertura"],shifts,2)}
       <h2 style="font-size:16px;margin:19px 5px 9px;color:#12395c">Histórico de asistencia</h2>
