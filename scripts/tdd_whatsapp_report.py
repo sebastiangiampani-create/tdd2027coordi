@@ -106,7 +106,7 @@ def main():
     caption += (
         "🌎 *PARTICIPACIÓN ACUMULADA DEL PERÍODO*\n"
         f"👥 *Docentes distintos:* {fmt(unique_period)}\n"
-        f"🎯 *Cobertura del universo:* {pct(unique_period,3853)} de 3.853 docentes\n\n"
+        f"🎯 *Cobertura del universo:* {pct(unique_period,2591)} de 2.591 docentes\n\n"
         "_Datos registrados al momento del envío. Totales por DNI únicos._\n\n"
         "🏛️ *Escuela de Maestros* · Ministerio de Educación"
     )
