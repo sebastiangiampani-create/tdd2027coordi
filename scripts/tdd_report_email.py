@@ -261,7 +261,7 @@ def main():
     all_rows=read(87091997)
     proposals=read(0)
     if len(proposals)<2 or len(all_rows)<2: raise RuntimeError("Planillas sin datos o inaccesibles; no se envia.")
-    records=[r for r in all_rows[1:] if at(r,1)]
+    records=[r for r in all_rows[1:] if at(r,1) and (d:=day(at(r,13))) and d<=target]
     today=[r for r in records if day(at(r,13))==target]
     if not today and os.environ.get("GITHUB_EVENT_NAME")=="schedule":
         print(f"Sin asistencias cargadas para {target.isoformat()}: no hubo envio automatico.")
