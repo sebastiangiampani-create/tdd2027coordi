@@ -44,13 +44,12 @@ function progress(a,b){const track=el('div','numbers-progress'),fill=el('span');
 function makeCard(title,tag,row,sub,outside){
  const card=el('article','numbers-detail-card');card.append(el('span','numbers-card-tag',tag),el('h3','',title));
  if(sub)card.append(el('p','numbers-context',sub));
- for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participaron al menos una vez',fmt(row.any)],['Participación POF',percent(row.any,row.expected)],['No convocados que participaron',fmt(outside.any)],['Total participantes (convocados + no convocados)',fmt(row.any+outside.any)]]){
+ for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participantes totales',fmt(row.any+outside.any)],['Cobertura de convocados',percent(row.any,row.expected)]]){
  const line=el('div','numbers-row');line.append(el('span','',label),el('b','',value));card.append(line)}
  card.append(progress(row.any,row.expected));
  const mini=el('div','numbers-mini-encounters');
- for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(row['e'+i])));mini.append(tile)}
+ for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(row['e'+i]+outside['e'+i])));mini.append(tile)}
  card.append(mini);
- const extra=el('p','numbers-context','No convocados por encuentro: '+[1,2,3,4].map(i=>'E'+i+': '+fmt(outside['e'+i])).join(' · '));card.append(extra);
  return card;
 }
 function render(){
@@ -70,10 +69,10 @@ function render(){
   const head=el('summary'),top=el('div','school-head'),name=el('div');
   name.append(el('span','numbers-card-tag',g.dep),el('h3','',g.name));top.append(name,el('span','school-open','Tocar para ver áreas ▾'));head.append(top);
   const stats=el('div','school-summary');
-  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Convocados participantes',fmt(total.any)],['No convocados participantes',fmt(outsideTotal.any)],['Total participantes',fmt(total.any+outsideTotal.any)],['Cobertura POF',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
+  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Participantes totales',fmt(total.any+outsideTotal.any)],['Cobertura de convocados',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
   head.append(stats);card.append(head);
   const content=el('div','school-expanded'),encounters=el('div','school-encounters');
-  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i]+outsideTotal['e'+i])),el('small','','Convocados '+fmt(total['e'+i])+' · No convocados '+fmt(outsideTotal['e'+i])));encounters.append(n)}
+  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i]+outsideTotal['e'+i])),el('small','','Participantes totales'));encounters.append(n)}
   content.append(encounters,el('h4','school-areas-title','Desglose por área y por encuentro'));
   const areaGrid=el('div','school-area-grid');
   const areas=N.group(g.rows,['area']).sort((x,y)=>x.area.localeCompare(y.area,'es'));
@@ -81,10 +80,7 @@ function render(){
   content.append(areaGrid);card.append(content);panel.append(card);
  }
  if(!sorted.length)panel.append(el('p','numbers-empty','No se encontraron escuelas para esta selección.'));
- let out=data.outside;if(chosenSchool)out=out.filter(r=>r.schoolId===chosenSchool);if(chosenArea)out=out.filter(r=>r.areaId===chosenArea);
- const outside=$('numbers-outside');
- outside.replaceChildren(...out.map(r=>{const n=el('article','numbers-detail-card');n.append(el('span','numbers-card-tag','FUERA DEL PADRÓN'),el('h3','',r.school),el('p','numbers-context',r.area));const line=el('div','numbers-row');line.append(el('span','','Al menos un encuentro'),el('b','',fmt(r.any)));n.append(line);const mini=el('div','numbers-mini-encounters');for(let i=1;i<=4;i++){const e=el('div','','Enc. '+i);e.append(el('b','',fmt(r['e'+i])));mini.append(e)}n.append(mini);return n}));
- $('numbers-outside-section').hidden=out.length===0;
+
 }
 async function load(){
  if(loading)return;loading=true;$('numbers-refresh').disabled=true;$('numbers-status').textContent='Actualizando datos agregados…';
