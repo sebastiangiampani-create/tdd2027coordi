@@ -264,8 +264,7 @@ def main():
     records=[r for r in all_rows[1:] if at(r,1) and (d:=day(at(r,14))) and d<=target]
     today=[r for r in records if day(at(r,14))==target]
     if not today and os.environ.get("GITHUB_EVENT_NAME")=="schedule":
-        print(f"Sin asistencias cargadas para {target.isoformat()}: no hubo envio automatico.")
-        return
+        raise RuntimeError(f"No se envio correo: no se reconocieron asistencias para {target.isoformat()}. Revisar columna O (fecha) y datos de Google Sheets.")
     if not today:
         from collections import Counter
         print("Diagnostic date values (no names):", Counter(at(r,14) for r in records).most_common(8))
