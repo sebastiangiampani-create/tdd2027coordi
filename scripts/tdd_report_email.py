@@ -50,24 +50,40 @@ def read(gid):
 def at(r,i): return str(r[i]).strip() if len(r)>i else ""
 def norm(v): return unicodedata.normalize("NFKD",str(v)).encode("ascii","ignore").decode().lower().strip()
 def day(v):
+    """Parse the date from column O, never infer a date from an encounter label."""
+    from datetime import date
     v=str(v).strip()
-    for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y","%d/%m/%Y %H:%M:%S","%d/%m/%Y %H:%M","%d/%m","%Y-%m-%d %H:%M:%S"):
-        try:
-            d=datetime.strptime(v,fmt).date()
-            return d.replace(year=2026) if fmt=="%d/%m" else d
+    if not v: return None
+    for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y","%d/%m/%Y %H:%M:%S","%d/%m/%Y %H:%M","%Y-%m-%d %H:%M:%S"):
+        try: return datetime.strptime(v,fmt).date()
         except ValueError: pass
-    m=re.search(r"Date\((\d+),(\d+),(\d+)",v)
+    m=re.fullmatch(r"(\\d{1,2})[/.-](\\d{1,2})",v)
     if m:
-        from datetime import date
-        return date(int(m[1]),int(m[2])+1,int(m[3]))
-    m=re.match(r"^(\\d{1,2})[/.-](\\d{1,2})(?:[/.-](\\d{2,4}))?",v)
+        try: return date(2026,int(m[2]),int(m[1]))
+        except ValueError: return None
+    m=re.search(r"Date\\((\\d+),(\\d+),(\\d+)",v)
     if m:
-        from datetime import date
-        y=int(m[3]) if m[3] else 2026
-        if y<100:y+=2000
-        try:return date(y,int(m[2]),int(m[1]))
-        except ValueError:pass
+        try: return date(int(m[1]),int(m[2])+1,int(m[3]))
+        except ValueError: return None
+    m=re.match(r"^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})(?:\\s|$)",v)
+    if m:
+        y=int(m[3]); y=y+2000 if y<100 else y
+        try: return date(y,int(m[2]),int(m[1]))
+        except ValueError: return None
     return None
+
+def validate_attendance_sheet(all_rows):
+    """Reject a changed or incomplete sheet rather than silently sending wrong totals."""
+    if len(all_rows)<2: raise RuntimeError("La hoja Asistencias esta vacia o inaccesible")
+    header=[norm(h).replace(" ","") for h in all_rows[0]]
+    if len(header)<16:
+        raise RuntimeError(f"Asistencias tiene {len(header)} columnas; se requieren A:P (Fecha en O, Turno en P)")
+    if "fecha" not in header[14] or "turno" not in header[15]:
+        raise RuntimeError(f"Columnas de Asistencias cambiaron: O={all_rows[0][14]!r}, P={all_rows[0][15]!r}. No se envia.")
+    dated=sum(1 for r in all_rows[1:] if at(r,1) and day(at(r,14)))
+    if not dated:
+        raise RuntimeError("Ninguna fecha valida en columna O; se cancela el envio")
+    return dated
 
 def dep(v):
     n=norm(v)
@@ -261,6 +277,7 @@ def main():
     all_rows=read(87091997)
     proposals=read(0)
     if len(proposals)<2 or len(all_rows)<2: raise RuntimeError("Planillas sin datos o inaccesibles; no se envia.")
+    validate_attendance_sheet(all_rows)
     records=[r for r in all_rows[1:] if at(r,1) and (d:=day(at(r,14))) and d<=target]
     today=[r for r in records if day(at(r,14))==target]
     if not today and os.environ.get("GITHUB_EVENT_NAME")=="schedule":
