@@ -41,15 +41,17 @@ function createKpi(label,value,hint,primary){
  const box=el('div','numbers-kpi'+(primary?' primary':''));box.append(el('span','',label),el('strong','',value),el('small','',hint));return box;
 }
 function progress(a,b){const track=el('div','numbers-progress'),fill=el('span');fill.style.width=(b?Math.min(100,100*a/b):0)+'%';track.append(fill);return track}
-function makeCard(title,tag,row,sub){
+function makeCard(title,tag,row,sub,outside){
  const card=el('article','numbers-detail-card');card.append(el('span','numbers-card-tag',tag),el('h3','',title));
  if(sub)card.append(el('p','numbers-context',sub));
- for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participaron al menos una vez',fmt(row.any)],['Participación',percent(row.any,row.expected)]]){
+ for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participaron al menos una vez',fmt(row.any)],['Participación POF',percent(row.any,row.expected)],['No convocados que participaron',fmt(outside.any)],['Total participantes (convocados + no convocados)',fmt(row.any+outside.any)]]){
  const line=el('div','numbers-row');line.append(el('span','',label),el('b','',value));card.append(line)}
  card.append(progress(row.any,row.expected));
  const mini=el('div','numbers-mini-encounters');
  for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(row['e'+i])));mini.append(tile)}
- card.append(mini);return card;
+ card.append(mini);
+ const extra=el('p','numbers-context','No convocados por encuentro: '+[1,2,3,4].map(i=>'E'+i+': '+fmt(outside['e'+i])).join(' · '));card.append(extra);
+ return card;
 }
 function render(){
  if(!data)return;
@@ -63,19 +65,19 @@ function render(){
  panel.replaceChildren();
  const sorted=[...groups.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'es',{numeric:true}));
  for(const [schoolId,g] of sorted){
-  const total=N.sum(g.rows),card=el('details','numbers-school-card');card.dataset.schoolId=schoolId;
+  const total=N.sum(g.rows),outsideRows=data.outside.filter(r=>r.schoolId===schoolId&&(!chosenArea||r.areaId===chosenArea)),outsideTotal=N.sum(outsideRows),card=el('details','numbers-school-card');card.dataset.schoolId=schoolId;
   if(chosenSchool===schoolId||expanded.has(schoolId))card.open=true;
   const head=el('summary'),top=el('div','school-head'),name=el('div');
   name.append(el('span','numbers-card-tag',g.dep),el('h3','',g.name));top.append(name,el('span','school-open','Tocar para ver áreas ▾'));head.append(top);
   const stats=el('div','school-summary');
-  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Participaron',fmt(total.any)],['Participación',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
+  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Convocados participantes',fmt(total.any)],['No convocados participantes',fmt(outsideTotal.any)],['Total participantes',fmt(total.any+outsideTotal.any)],['Cobertura POF',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
   head.append(stats);card.append(head);
   const content=el('div','school-expanded'),encounters=el('div','school-encounters');
-  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i])),el('small','',percent(total['e'+i],total.expected)));encounters.append(n)}
+  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i]+outsideTotal['e'+i])),el('small','','Convocados '+fmt(total['e'+i])+' · No convocados '+fmt(outsideTotal['e'+i])));encounters.append(n)}
   content.append(encounters,el('h4','school-areas-title','Desglose por área y por encuentro'));
   const areaGrid=el('div','school-area-grid');
   const areas=N.group(g.rows,['area']).sort((x,y)=>x.area.localeCompare(y.area,'es'));
-  for(const r of areas)areaGrid.append(makeCard(r.area,'ÁREA',r));
+  for(const r of areas){const extra=N.sum(outsideRows.filter(o=>o.areaId===g.rows.find(d=>d.area===r.area)?.areaId));areaGrid.append(makeCard(r.area,'ÁREA',r,'',extra))}
   content.append(areaGrid);card.append(content);panel.append(card);
  }
  if(!sorted.length)panel.append(el('p','numbers-empty','No se encontraron escuelas para esta selección.'));
