@@ -91,7 +91,7 @@ def encrypted_workbook(rows, password):
     columns=["Fecha","Dependencia","Escuela de pertenencia","Area convocada","Turno","Comision","DNI","Apellido","Nombre","Codigo"]
     details.append(columns)
     for r in rows:
-        details.append([at(r,13),dep(at(r,5)),at(r,7),at(r,9),at(r,14),at(r,11),at(r,1),at(r,3),at(r,2),at(r,10)])
+        details.append([at(r,14),dep(at(r,5)),at(r,7),at(r,9),at(r,15),at(r,11),at(r,1),at(r,3),at(r,2),at(r,10)])
     groups=[
         ("Por escuela",lambda r:(at(r,7),at(r,9)),["Escuela","Area","Docentes unicos"]),
         ("Por area",lambda r:(at(r,9),at(r,7)),["Area","Escuela","Docentes unicos"])
@@ -163,9 +163,9 @@ def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff
     shift_names = tuple(included_shifts) if included_shifts is not None else tuple(SHIFTS)
     if not shift_names or any(name not in SHIFTS for name in shift_names):
         raise ValueError("Turnos de informe invalidos")
-    relevant=[r for r in records if day(at(r,13)) and day(at(r,13))<=target and norm(at(r,14)) in {norm(name) for name in shift_names}]
-    today=[r for r in relevant if day(at(r,13))==target]
-    dates=sorted({day(at(r,13)) for r in relevant})
+    relevant=[r for r in records if day(at(r,14)) and day(at(r,14))<=target and norm(at(r,15)) in {norm(name) for name in shift_names}]
+    today=[r for r in relevant if day(at(r,14))==target]
+    dates=sorted({day(at(r,14)) for r in relevant})
     weekday=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
     plan=PLANNED.get(weekday[target.weekday()],[])
     expected=sum(plan[i] for i,name in enumerate(SHIFTS) if name in shift_names and i<len(plan))
@@ -174,9 +174,9 @@ def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff
     if whatsapp_cutoff:
         current=shift_names[-1]
         current_idx=SHIFTS.index(current)
-        current_count=num([r for r in today if norm(at(r,14))==norm(current)])
+        current_count=num([r for r in today if norm(at(r,15))==norm(current)])
         current_expected=plan[current_idx] if current_idx<len(plan) else 0
-        relevant=[r for r in records if (d:=day(at(r,13))) and (d<target or (d==target and norm(at(r,14)) in {norm(name) for name in shift_names}))]
+        relevant=[r for r in records if (d:=day(at(r,14))) and (d<target or (d==target and norm(at(r,15)) in {norm(name) for name in shift_names}))]
         accumulated=num(relevant)
     cv.setFillColor(white);cv.rect(0,0,W,H,fill=1,stroke=0)
     rect(0,H-93,W,93,navy,0)
@@ -213,10 +213,10 @@ def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff
     hy=H-422
     txt(40,hy,"HISTORICO DE ASISTENCIA",12,True,navy)
     history=dates[-5:]
-    max_history=max([num([r for r in relevant if day(at(r,13))==d]) for d in history] or [1])
+    max_history=max([num([r for r in relevant if day(at(r,14))==d]) for d in history] or [1])
     for i,d in enumerate(history):
         ry=hy-31-i*30
-        group=[r for r in relevant if day(at(r,13))==d]
+        group=[r for r in relevant if day(at(r,14))==d]
         n=num(group)
         exp=sum(PLANNED.get(weekday[d.weekday()],[])[i] for i,name in enumerate(SHIFTS) if name in shift_names and i<len(PLANNED.get(weekday[d.weekday()],[])))
         txt(42,ry,d.strftime("%d/%m"),9,True,navy)
@@ -228,7 +228,7 @@ def visual_pdf(records, target, proposals, included_shifts=None, whatsapp_cutoff
     txt(40,lower,"ASISTENCIA POR TURNO",11,True,navy)
     txt(318,lower,"POR DEPENDENCIA",11,True,navy)
     for i,name in enumerate(SHIFTS):
-        n=num([r for r in today if norm(at(r,14))==norm(name)]) if name in shift_names else 0
+        n=num([r for r in today if norm(at(r,15))==norm(name)]) if name in shift_names else 0
         exp=plan[i] if i<len(plan) and name in shift_names else 0
         yy=lower-28-i*36
         txt(41,yy,name,9,True,navy)
@@ -261,27 +261,27 @@ def main():
     all_rows=read(87091997)
     proposals=read(0)
     if len(proposals)<2 or len(all_rows)<2: raise RuntimeError("Planillas sin datos o inaccesibles; no se envia.")
-    records=[r for r in all_rows[1:] if at(r,1) and (d:=day(at(r,13))) and d<=target]
-    today=[r for r in records if day(at(r,13))==target]
+    records=[r for r in all_rows[1:] if at(r,1) and (d:=day(at(r,14))) and d<=target]
+    today=[r for r in records if day(at(r,14))==target]
     if not today and os.environ.get("GITHUB_EVENT_NAME")=="schedule":
         print(f"Sin asistencias cargadas para {target.isoformat()}: no hubo envio automatico.")
         return
     if not today:
         from collections import Counter
-        print("Diagnostic date values (no names):", Counter(at(r,13) for r in records).most_common(8))
+        print("Diagnostic date values (no names):", Counter(at(r,14) for r in records).most_common(8))
         raise RuntimeError("No hay registros reconocidos de la fecha seleccionada; no se envia.")
     weekday=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()]
     expected=PLANNED.get(weekday)
     total_expected=sum(expected) if expected else 0
-    dates={day(at(r,13)) for r in records if day(at(r,13))}
-    cumulative=sum(count([r for r in records if day(at(r,13))==d]) for d in dates)
+    dates={day(at(r,14)) for r in records if day(at(r,14))}
+    cumulative=sum(count([r for r in records if day(at(r,14))==d]) for d in dates)
     cumulative_expected=sum(sum(PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()],[])) for d in dates)
     history=[]
     for d in sorted(dates):
         label=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][d.weekday()]
         plan=PLANNED.get(label)
         if not plan: continue
-        group=[r for r in records if day(at(r,13))==d]
+        group=[r for r in records if day(at(r,14))==d]
         history.append((d,count(group),sum(plan)))
     def history_card(d,people,planned,active):
         rate=100*people/planned if planned else 0
@@ -304,7 +304,7 @@ def main():
     history_html+='</tr></table>'
     shifts=[]
     for i,name in enumerate(SHIFTS):
-        rs=[r for r in today if norm(at(r,14))==norm(name)]
+        rs=[r for r in today if norm(at(r,15))==norm(name)]
         shifts.append([name,count(rs),percent(count(rs),expected[i] if expected else 0)])
     dependencies=[]
     for name in BASE:
