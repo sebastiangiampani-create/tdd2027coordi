@@ -8,3 +8,17 @@ test('se detectan resúmenes filtrados o incompletos y cambios de encabezados',(
 test('CSV admite comas, saltos y comillas; cantidades no válidas no se convierten en ceros',()=>{assert.deepEqual(N.csv('A,B\n"Una, escuela","Dos ""áreas"""\n'),[['A','B'],['Una, escuela','Dos "áreas"']]);assert.equal(N.count('2.591'),2591);assert.throws(()=>N.count('sin dato'));assert.throws(()=>N.csv('A,"incompleto'))});
 test('el tablero solo solicita las tres hojas agregadas del archivo nuevo',()=>{const s=fs.readFileSync(path.join(__dirname,'../assets/school-dashboard.js'),'utf8');assert.match(s,/1djc57JJz-pdqmLHV8x45QO_jhM8XWI76k0OdhZ5Lg3E/);assert.match(s,/\[\['schools','201'\],\['shifts','204'\],\['metadata','202'\]\]/);assert(!/1hznlu4j|1x-cRhs|Base convocados|Base no convocados/.test(s));assert(!/DNI|Apellido|Nombre/.test(s))});
 test('conserva fuera de padrón al seleccionar las dos etiquetas de Escuela de la Ribera de esta fuente',()=>{const f=source();for(const r of f.rows){if(r[1]==='ET. RAGGIO'){r[0]='DEM';r[1]='EEM 7 - ESCUELA DE LA RIBERA'}}f.rows[3][15]='Esc. de Educacion Media N° 07/04° Escuela de la Ribera';f.metadata[3][14]='Dirección de Educación Media';f.metadata[3][15]=f.rows[3][15];const d=N.parse(f.rows,f.shifts,f.metadata,X),id=d.details.find(r=>r.school.includes('RIBERA')).schoolId;assert.equal(N.select(d,{school:id}).outsideTotal.any,1)});
+
+test('participación unificada utiliza el mismo numerador en total y porcentaje',()=>{
+ const registered={expected:2,any:1,e1:1,e2:1,e3:0,e4:0};
+ const outside={any:1,e1:1,e2:1,e3:0,e4:0};
+ const merged=N.combine(registered,outside);
+ assert.equal(merged.expected,2);assert.equal(merged.any,2);assert.equal(N.ratio(merged.any,merged.expected),100);
+ assert.equal(merged.e1,2);assert.equal(merged.e2,2);
+ assert.equal(N.ratio(registered.any,registered.expected),50);
+});
+test('participación sobre POF puede superar 100 % y sin POF no hay porcentaje',()=>{
+ const merged=N.combine({expected:1,any:1,e1:1},{any:2,e1:2});
+ assert.equal(merged.any,3);assert.equal(N.ratio(merged.any,merged.expected),300);
+ assert.equal(N.ratio(3,0),null);
+});
