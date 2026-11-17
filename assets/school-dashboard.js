@@ -52,24 +52,37 @@ function makeCard(title,tag,row,sub){
  card.append(mini);return card;
 }
 function render(){
- if(!data)return;const rows=subset(),total=N.sum(rows);
- const school=schoolOptions.find(o=>o.value===chosenSchool),area=areaOptions.find(o=>o.value===chosenArea);
- $('numbers-selection-label').textContent=[school?.label,area?.label].filter(Boolean).join(' · ')||'Todas las escuelas y áreas';
- $('numbers-result-count').textContent=new Set(rows.map(r=>r.schoolId)).size+' escuelas · '+new Set(rows.map(r=>r.areaId)).size+' áreas';
- $('numbers-cards').replaceChildren(createKpi('Docentes esperados (POF)',fmt(total.expected),'Universo convocado',true),createKpi('Participaron al menos una vez',fmt(total.any),'Registro en uno o más encuentros'),createKpi('Participación',percent(total.any,total.expected),'Sobre docentes esperados'),createKpi('Sin registro',fmt(Math.max(0,total.expected-total.any)),'No equivale necesariamente a ausencia'));
- $('numbers-encounters').replaceChildren(...[1,2,3,4].map(i=>{const n=el('article','numbers-encounter');n.append(el('h3','','Encuentro '+i),el('strong','',fmt(total['e'+i])),el('p','',percent(total['e'+i],total.expected)+' de '+fmt(total.expected)+' esperados'),progress(total['e'+i],total.expected));return n}));
- const groupKey=chosenSchool?'area':'schoolId';const group=N.group(rows,[groupKey]);
- const lookup=new Map(rows.map(r=>[r.schoolId,{school:r.school,dependency:r.dependency}]));
- group.sort((a,b)=>(groupKey==='area'?a.area:lookup.get(a.schoolId)?.school||'').localeCompare(groupKey==='area'?b.area:lookup.get(b.schoolId)?.school||'','es',{numeric:true}));
- $('numbers-detail-title').textContent=chosenSchool?'Áreas de la escuela':chosenArea?'Escuelas del área':'Participación por escuela';
- const detail=$('numbers-detail');detail.replaceChildren(...group.map(r=>makeCard(groupKey==='area'?r.area:lookup.get(r.schoolId)?.school||r.schoolId,groupKey==='area'?'ÁREA':lookup.get(r.schoolId)?.dependency||'ESCUELA',r)));
- if(!rows.length)detail.append(el('p','numbers-empty','No hay datos para esta combinación. Elegí otra escuela o área.'));
- let out=data.outside;
- if(chosenSchool)out=out.filter(r=>r.schoolId===chosenSchool);
- if(chosenArea)out=out.filter(r=>r.areaId===chosenArea);
+ if(!data)return;
+ const rows=subset(),school=schoolOptions.find(o=>o.value===chosenSchool),area=areaOptions.find(o=>o.value===chosenArea);
+ $('numbers-selection-label').textContent=school?school.label:area?'Escuelas · '+area.label:'Tableros por escuela';
+ const groups=new Map();
+ for(const row of rows){if(!groups.has(row.schoolId))groups.set(row.schoolId,{name:row.school,dep:row.dependency,rows:[]});groups.get(row.schoolId).rows.push(row)}
+ $('numbers-result-count').textContent=groups.size+' escuelas · '+new Set(rows.map(r=>r.areaId)).size+' áreas';
+ const panel=$('numbers-detail');
+ const expanded=new Set([...panel.querySelectorAll('details[open]')].map(n=>n.dataset.schoolId));
+ panel.replaceChildren();
+ const sorted=[...groups.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'es',{numeric:true}));
+ for(const [schoolId,g] of sorted){
+  const total=N.sum(g.rows),card=el('details','numbers-school-card');card.dataset.schoolId=schoolId;
+  if(chosenSchool===schoolId||expanded.has(schoolId))card.open=true;
+  const head=el('summary'),top=el('div','school-head'),name=el('div');
+  name.append(el('span','numbers-card-tag',g.dep),el('h3','',g.name));top.append(name,el('span','school-open','Tocar para ver áreas ▾'));head.append(top);
+  const stats=el('div','school-summary');
+  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Participaron',fmt(total.any)],['Participación',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
+  head.append(stats);card.append(head);
+  const content=el('div','school-expanded'),encounters=el('div','school-encounters');
+  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i])),el('small','',percent(total['e'+i],total.expected)));encounters.append(n)}
+  content.append(encounters,el('h4','school-areas-title','Desglose por área y por encuentro'));
+  const areaGrid=el('div','school-area-grid');
+  const areas=N.group(g.rows,['area']).sort((x,y)=>x.area.localeCompare(y.area,'es'));
+  for(const r of areas)areaGrid.append(makeCard(r.area,'ÁREA',r));
+  content.append(areaGrid);card.append(content);panel.append(card);
+ }
+ if(!sorted.length)panel.append(el('p','numbers-empty','No se encontraron escuelas para esta selección.'));
+ let out=data.outside;if(chosenSchool)out=out.filter(r=>r.schoolId===chosenSchool);if(chosenArea)out=out.filter(r=>r.areaId===chosenArea);
  const outside=$('numbers-outside');
- outside.replaceChildren(...out.map(r=>{const n=el('article','numbers-detail-card');n.append(el('span','numbers-card-tag','FUERA DEL PADRÓN'),el('h3','',r.school),el('p','numbers-context',r.area));const s=el('div','numbers-row');s.append(el('span','','Al menos un encuentro'),el('b','',fmt(r.any)));n.append(s);const m=el('div','numbers-mini-encounters');for(let i=1;i<=4;i++){const a=el('div','','Enc. '+i);a.append(el('b','',fmt(r['e'+i])));m.append(a)}n.append(m);return n}));
- if(!out.length)outside.append(el('p','numbers-empty','No hay registros fuera del padrón en esta selección.'));
+ outside.replaceChildren(...out.map(r=>{const n=el('article','numbers-detail-card');n.append(el('span','numbers-card-tag','FUERA DEL PADRÓN'),el('h3','',r.school),el('p','numbers-context',r.area));const line=el('div','numbers-row');line.append(el('span','','Al menos un encuentro'),el('b','',fmt(r.any)));n.append(line);const mini=el('div','numbers-mini-encounters');for(let i=1;i<=4;i++){const e=el('div','','Enc. '+i);e.append(el('b','',fmt(r['e'+i])));mini.append(e)}n.append(mini);return n}));
+ $('numbers-outside-section').hidden=out.length===0;
 }
 async function load(){
  if(loading)return;loading=true;$('numbers-refresh').disabled=true;$('numbers-status').textContent='Actualizando datos agregados…';
