@@ -69,14 +69,14 @@ def main():
     scopes={"tm":("Mañana",),"tm_tt":("Mañana","Tarde"),"general":tuple(SHIFTS)}
     if scope not in scopes: raise RuntimeError("REPORT_SCOPE invalido: tm, tm_tt o general")
     included=scopes[scope]
-    today=[r for r in records if day(at(r,13))==target and norm(at(r,14)) in {norm(name) for name in included}]
+    today=[r for r in records if day(at(r,14))==target and norm(at(r,15)) in {norm(name) for name in included}]
     if not today: raise RuntimeError("Sin asistencia para esa fecha; no se envio nada")
     plan=PLANNED.get(["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"][target.weekday()],[])
     current_shift={"tm":"Mañana","tm_tt":"Tarde","general":"Vespertino"}[scope]
     current_index=SHIFTS.index(current_shift)
-    current_actual=count([r for r in today if norm(at(r,14))==norm(current_shift)])
+    current_actual=count([r for r in today if norm(at(r,15))==norm(current_shift)])
     current_expected=plan[current_index] if current_index<len(plan) else 0
-    prior=[r for r in records if (d:=day(at(r,13))) and (d<target or (d==target and norm(at(r,14)) in {norm(name) for name in included}))]
+    prior=[r for r in records if (d:=day(at(r,14))) and (d<target or (d==target and norm(at(r,15)) in {norm(name) for name in included}))]
     unique_period=count(prior)
     def fmt(value): return f"{value:,}".replace(",", ".")
     def pct(actual,planned): return percent(actual,planned).replace(".", ",")
@@ -88,7 +88,7 @@ def main():
     if scope=="general":
         # El cierre vespertino muestra los tres turnos, sin duplicar el acumulado.
         for i,name in enumerate(SHIFTS):
-            actual=count([r for r in today if norm(at(r,14))==norm(name)])
+            actual=count([r for r in today if norm(at(r,15))==norm(name)])
             expected=plan[i] if i<len(plan) else 0
             caption+=(
                 f"{icons[name]} *ASISTENCIA DEL TURNO {name.upper()}*\n"
