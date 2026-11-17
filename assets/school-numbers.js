@@ -21,6 +21,8 @@
  }
  function sum(rows){const result={expected:0,e1:0,e2:0,e3:0,e4:0,any:0};for(const r of rows)for(const k of Object.keys(result))result[k]+=r[k]||0;return result}
  function select(data,f={}){const isShift=f.view==='shift';const rows=(isShift?data.turns:data.details).filter(r=>(!f.area||r.areaId===f.area)&&(!isShift?(!f.dependency||r.dependency===f.dependency)&&(!f.school||r.schoolId===f.school):(!f.shift||r.shift===f.shift)));const extra=isShift?[]:data.outside.filter(r=>(!f.area||r.areaId===f.area)&&(!f.school||r.schoolId===f.school)&&(!f.dependency||r.dependencies.includes(f.dependency)));return {rows,outside:extra,total:sum(rows),outsideTotal:sum(extra),outsideAvailable:!isShift}}
+ function combine(registered,outside){const result={expected:registered.expected};for(const key of ['any','e1','e2','e3','e4'])result[key]=(registered[key]||0)+(outside?.[key]||0);return result}
+ function ratio(participants,expected){return expected>0?100*participants/expected:null}
  function group(rows,keys){const map=new Map();for(const row of rows){const id=JSON.stringify(keys.map(k=>row[k]));if(!map.has(id))map.set(id,Object.assign(Object.fromEntries(keys.map(k=>[k,row[k]])),sum([])));const value=map.get(id);for(const k of ['expected','e1','e2','e3','e4','any'])value[k]+=row[k]||0}return [...map.values()]}
- const api={csv,count,parse,sum,select,group};if(typeof module==='object'&&module.exports)module.exports=api;else root.TDDSchoolNumbers=api;
+ const api={csv,count,parse,sum,select,group,combine,ratio};if(typeof module==='object'&&module.exports)module.exports=api;else root.TDDSchoolNumbers=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
