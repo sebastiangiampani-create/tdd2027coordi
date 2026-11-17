@@ -6,7 +6,7 @@ const SOURCES=[['schools','201'],['shifts','204'],['metadata','202']];
 const keys=['expected','e1','e2','e3','e4','any'];
 let data=null,loading=false,chosenSchool='',chosenArea='',mode='all',schoolOptions=[],areaOptions=[];
 const fmt=n=>Number(n||0).toLocaleString('es-AR');
-const percent=(a,b)=>b>0?(100*a/b).toLocaleString('es-AR',{maximumFractionDigits:1})+' %':'Sin dato';
+const percent=(a,b)=>{const value=N.ratio(a,b);return value===null?'Sin dato':value.toLocaleString('es-AR',{maximumFractionDigits:1})+' %'};
 const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n};
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 function options(){
@@ -42,13 +42,14 @@ function createKpi(label,value,hint,primary){
 }
 function progress(a,b){const track=el('div','numbers-progress'),fill=el('span');fill.style.width=(b?Math.min(100,100*a/b):0)+'%';track.append(fill);return track}
 function makeCard(title,tag,row,sub,outside){
+ const unified=N.combine(row,outside);
  const card=el('article','numbers-detail-card');card.append(el('span','numbers-card-tag',tag),el('h3','',title));
  if(sub)card.append(el('p','numbers-context',sub));
- for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participantes totales',fmt(row.any+outside.any)],['Cobertura de convocados',percent(row.any,row.expected)]]){
+ for(const [label,value] of [['Esperados (POF)',fmt(unified.expected)],['Participantes totales',fmt(unified.any)],['Participación sobre POF',percent(unified.any,unified.expected)]]){
  const line=el('div','numbers-row');line.append(el('span','',label),el('b','',value));card.append(line)}
- card.append(progress(row.any,row.expected));
+ card.append(progress(unified.any,unified.expected));
  const mini=el('div','numbers-mini-encounters');
- for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(row['e'+i]+outside['e'+i])));mini.append(tile)}
+ for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(unified['e'+i])));mini.append(tile)}
  card.append(mini);
  return card;
 }
@@ -64,15 +65,15 @@ function render(){
  panel.replaceChildren();
  const sorted=[...groups.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name,'es',{numeric:true}));
  for(const [schoolId,g] of sorted){
-  const total=N.sum(g.rows),outsideRows=data.outside.filter(r=>r.schoolId===schoolId&&(!chosenArea||r.areaId===chosenArea)),outsideTotal=N.sum(outsideRows),card=el('details','numbers-school-card');card.dataset.schoolId=schoolId;
+  const total=N.sum(g.rows),outsideRows=data.outside.filter(r=>r.schoolId===schoolId&&(!chosenArea||r.areaId===chosenArea)),outsideTotal=N.sum(outsideRows),unified=N.combine(total,outsideTotal),card=el('details','numbers-school-card');card.dataset.schoolId=schoolId;
   if(chosenSchool===schoolId||expanded.has(schoolId))card.open=true;
   const head=el('summary'),top=el('div','school-head'),name=el('div');
   name.append(el('span','numbers-card-tag',g.dep),el('h3','',g.name));top.append(name,el('span','school-open','Tocar para ver áreas ▾'));head.append(top);
   const stats=el('div','school-summary');
-  for(const [label,value] of [['Esperados POF',fmt(total.expected)],['Participantes totales',fmt(total.any+outsideTotal.any)],['Cobertura de convocados',percent(total.any,total.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
+  for(const [label,value] of [['Esperados POF',fmt(unified.expected)],['Participantes totales',fmt(unified.any)],['Participación sobre POF',percent(unified.any,unified.expected)]]){const n=el('div','school-stat');n.append(el('span','',label),el('strong','',value));stats.append(n)}
   head.append(stats);card.append(head);
   const content=el('div','school-expanded'),encounters=el('div','school-encounters');
-  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(total['e'+i]+outsideTotal['e'+i])),el('small','','Participantes totales'));encounters.append(n)}
+  for(let i=1;i<=4;i++){const n=el('div','school-encounter');n.append(el('span','','Encuentro '+i),el('strong','',fmt(unified['e'+i])),el('small','','Participantes totales'));encounters.append(n)}
   content.append(encounters,el('h4','school-areas-title','Desglose por área y por encuentro'));
   const areaGrid=el('div','school-area-grid');
   const areas=N.group(g.rows,['area']).sort((x,y)=>x.area.localeCompare(y.area,'es'));
