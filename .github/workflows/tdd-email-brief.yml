@@ -39,6 +39,22 @@ jobs:
         run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py
       - name: Instalar dependencias
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
+      - name: Verificar fechas y columnas antes del envio
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, "scripts")
+          from tdd_report_email import day, validate_attendance_sheet
+          from datetime import date
+          assert day("16/11/2026") == date(2026,11,16)
+          assert day("16/11") == date(2026,11,16)
+          assert day("Enc. 1") is None
+          assert day("#N/A") is None
+          header = [""]*16
+          header[14], header[15] = "Fecha", "Turno"
+          assert validate_attendance_sheet([header,["DNI","123"]+[""]*12+["16/11/2026","Mañana"]]) == 1
+          print("OK: formato de fecha y esquema de columnas O/P")
+          PY
       - name: Generar informe de texto auxiliar
         env:
           REPORT_DRY_RUN: "1"
