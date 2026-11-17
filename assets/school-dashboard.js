@@ -1,48 +1,91 @@
 (function(){
- 'use strict';
- const $=id=>document.getElementById(id),N=TDDSchoolNumbers;
- const SOURCE='1djc57JJz-pdqmLHV8x45QO_jhM8XWI76k0OdhZ5Lg3E';
- // Only aggregate summary sheets. No nominal source sheet is requested.
- const SOURCES=[['schools','201'],['shifts','204'],['metadata','202']];
- let data=null,loading=false,sort={key:'school',ascending:true},lastSelection=null,lastRows=[],lastHeaders=[];
- const fmt=n=>Number(n).toLocaleString('es-AR'),pct=(a,b)=>b>0?(100*a/b).toLocaleString('es-AR',{maximumFractionDigits:1})+' %':'Sin dato';
- const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=value;return el};
- async function load(){
-  if(loading)return;loading=true;$('numbers-refresh').disabled=true;$('numbers-status').textContent='Actualizando los resúmenes de la planilla…';
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
-  try{const values=await Promise.all(SOURCES.map(async([key,gid])=>{const url='https://docs.google.com/spreadsheets/d/'+SOURCE+'/export?'+new URLSearchParams({format:'csv',gid,_:String(Date.now())});const response=await fetch(url,{signal:controller.signal,credentials:'omit',cache:'no-store'});if(!response.ok)throw Error('Google Sheets respondió HTTP '+response.status);return [key,N.csv(await response.text())]}));const tables=Object.fromEntries(values);const next=N.parse(tables.schools,tables.shifts,tables.metadata,TDDCross);data=next;options();render();$('numbers-status').textContent='Datos actualizados: '+new Date().toLocaleString('es-AR')+'. '+new Set(data.details.map(r=>r.schoolId)).size+' escuelas en la fuente.';$('numbers-excel').disabled=false;$('numbers-print').disabled=false}
-  catch(error){$('numbers-status').textContent=(data?'No se pudo actualizar. Se conserva la última lectura válida. ':'No se pudieron cargar los resúmenes. ')+(error.name==='AbortError'?'La consulta tardó demasiado.':error.message)}
-  finally{clearTimeout(timer);loading=false;$('numbers-refresh').disabled=false}
- }
- function fill(id,items){const el=$(id),old=el.value;el.replaceChildren(new Option(id==='numbers-dependency'?'Todas':id==='numbers-area'?'Todas':'Todos',''),...items.map(([value,label])=>new Option(label,value)));if(items.some(([value])=>value===old))el.value=old}
- function options(){fill('numbers-dependency',[...new Set(data.details.map(r=>r.dependency))].sort().map(v=>[v,v]));const areas=new Map([...data.details,...data.turns,...data.outside].map(r=>[r.areaId,r.area]));fill('numbers-area',[...areas].sort((a,b)=>a[1].localeCompare(b[1],'es')));fill('numbers-shift',[...new Set(data.turns.map(r=>r.shift))].sort().map(v=>[v,v]));const names=[...new Set([...data.details,...data.outside].map(r=>r.school))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));$('numbers-schools').replaceChildren(...names.map(name=>new Option(name,name)))}
- function selection(){const view=$('numbers-view').value,query=$('numbers-school').value.trim();const schoolMatch=query?TDDCross.school(query):'';const f={view,dependency:$('numbers-dependency').value,school:'',area:$('numbers-area').value,shift:$('numbers-shift').value};let result=N.select(data,f);if(view!=='shift'&&query){const matches=r=>r.schoolId===schoolMatch||r.school.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(query.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,''));result.rows=result.rows.filter(matches);result.outside=result.outside.filter(matches);result.total=N.sum(result.rows);result.outsideTotal=N.sum(result.outside)}return result}
- function render(){
-  if(!data)return;const view=$('numbers-view').value,isShift=view==='shift',metric=$('numbers-metric').value;
-  $('numbers-dependency').disabled=isShift;$('numbers-school').disabled=isShift;$('numbers-shift').disabled=!isShift;
-  const sourceNote=isShift?'Resumen general por turno y área. Esta hoja no desglosa por escuela ni dependencia; esos filtros no se aplican.':'Datos de escuela y área de la nueva planilla. El desglose por turno se consulta en su propia vista, porque la fuente no cruza escuela con turno.';
-  $('numbers-scope-note').textContent=sourceNote;
-  const result=selection(),total=result.total,actual=total[metric],extra=result.outsideTotal[metric];lastSelection=result;
-  const cards=[['Esperados (POF)',fmt(total.expected)],['Con registro · '+$('numbers-metric').selectedOptions[0].textContent,fmt(actual)],['Participación sobre esperados',pct(actual,total.expected)],['Sin registro en la selección',fmt(Math.max(0,total.expected-actual))],['Fuera del padrón',result.outsideAvailable?fmt(extra):'Sin desglose por turno']];
-  $('numbers-cards').replaceChildren(...cards.map(([label,value])=>{const box=document.createElement('div');box.append(text('dt',label),text('dd',value));return box}));
-  const keys=isShift?['shift','area']:view==='detail'?['dependency','school','area']:['dependency','school'];
-  const rows=N.group(result.rows,keys).map(r=>({...r,selected:r[metric],coverage:r.expected?r[metric]/r.expected:null}));
-  const labels={dependency:'Dependencia',school:'Escuela',area:'Área',shift:'Turno'};const columns=[...keys.map(k=>[k,labels[k]]),['expected','Esperados'],['e1','Enc. 1'],['e2','Enc. 2'],['e3','Enc. 3'],['e4','Enc. 4'],['any','Al menos un encuentro'],['coverage','% seleccionado']];
-  if(!columns.some(([k])=>k===sort.key))sort={key:keys[0],ascending:true};
-  rows.sort((a,b)=>{const x=a[sort.key],y=b[sort.key];return (typeof x==='number'&&typeof y==='number'?x-y:String(x??'').localeCompare(String(y??''),'es',{numeric:true}))*(sort.ascending?1:-1)});
-  lastRows=rows;lastHeaders=columns;
-  const head=document.createElement('tr');for(const [key,label] of columns){const th=document.createElement('th'),button=text('button',label+(sort.key===key?(sort.ascending?' ↑':' ↓'):''));button.type='button';button.addEventListener('click',()=>{sort=sort.key===key?{key,ascending:!sort.ascending}:{key,ascending:true};render()});th.append(button);head.append(th)}$('numbers-head').replaceChildren(head);
-  $('numbers-body').replaceChildren(...rows.map(row=>{const tr=document.createElement('tr');for(const [key] of columns)tr.append(text('td',key==='coverage'?pct(row[metric],row.expected):typeof row[key]==='number'?fmt(row[key]):row[key]));return tr}));
-  const foot=document.createElement('tr');columns.forEach(([key],i)=>foot.append(text('td',i===0?'TOTAL':key==='coverage'?pct(actual,total.expected):Object.hasOwn(total,key)?fmt(total[key]):'')));$('numbers-foot').replaceChildren(foot);
-  $('numbers-result-count').textContent=rows.length+' resultados. '+$('numbers-metric').selectedOptions[0].textContent+'. Todos los grupos de la selección están incluidos.';
-  $('numbers-chart-title').textContent=isShift?'Por turno':'Por escuela';bars('numbers-chart-school',N.group(result.rows,[isShift?'shift':'school']),isShift?'shift':'school',metric);bars('numbers-chart-area',N.group(result.rows,['area']),'area',metric);
-  $('numbers-outside-panel').hidden=isShift;$('numbers-outside-body').replaceChildren(...result.outside.map(r=>{const tr=document.createElement('tr');for(const v of [r.school,r.area,r.any,r.e1,r.e2,r.e3,r.e4])tr.append(text('td',typeof v==='number'?fmt(v):v));return tr}));
- }
- function bars(id,rows,label,metric){const parent=$(id);if(!rows.length){parent.replaceChildren(text('p','Sin datos para esta selección.'));return}const max=Math.max(1,...rows.map(r=>Math.max(r.expected,r[metric])));rows.sort((a,b)=>b.expected-a.expected);parent.replaceChildren(...rows.map(r=>{const box=document.createElement('div');box.className='numbers-bar';box.append(text('strong',r[label]));const track=document.createElement('div');track.className='numbers-track';track.style.width=(100*r.expected/max)+'%';const fill=document.createElement('span');fill.style.width=(r.expected?Math.min(100,100*r[metric]/r.expected):0)+'%';track.append(fill);box.append(track,text('small',fmt(r[metric])+' participantes / '+fmt(r.expected)+' esperados · '+pct(r[metric],r.expected)));return box}))}
- function filters(){return [['Vista',$('numbers-view').selectedOptions[0].textContent],['Dependencia',$('numbers-view').value==='shift'?'No aplica':$('numbers-dependency').value||'Todas'],['Escuela',$('numbers-view').value==='shift'?'No aplica':$('numbers-school').value||'Todas'],['Área',$('numbers-area').selectedOptions[0].textContent],['Turno',$('numbers-view').value==='shift'?$('numbers-shift').value||'Todos':'No aplica'],['Participación',$('numbers-metric').selectedOptions[0].textContent],['Fuente','https://docs.google.com/spreadsheets/d/'+SOURCE+'/edit'],['Descarga',new Date().toLocaleString('es-AR')]]}
- function excel(){if(!lastSelection||typeof XLSX==='undefined'){alert('No se pudo cargar la exportación Excel.');return}const metric=$('numbers-metric').value,t=lastSelection.total,book=XLSX.utils.book_new();const summary=[['Indicador','Cantidad'],['Esperados POF',t.expected],['Participantes seleccionados',t[metric]],['Proporción sobre esperados',t.expected?t[metric]/t.expected:null],['Sin registro en la selección',Math.max(0,t.expected-t[metric])],['Fuera del padrón',lastSelection.outsideAvailable?lastSelection.outsideTotal[metric]:'Sin desglose por turno'],['Nota','Sin registro no confirma ausencia; el encuentro puede estar pendiente o en curso.']];const sheet=XLSX.utils.aoa_to_sheet(summary);if(sheet.B4)sheet.B4.z='0.0%';XLSX.utils.book_append_sheet(book,sheet,'Resumen');const results=XLSX.utils.aoa_to_sheet([lastHeaders.map(([,v])=>v),...lastRows.map(r=>lastHeaders.map(([k])=>r[k]))]);const coverageColumn=lastHeaders.findIndex(([k])=>k==='coverage');lastRows.forEach((_,i)=>{const cell=results[XLSX.utils.encode_cell({r:i+1,c:coverageColumn})];if(cell&&cell.v!==null)cell.z='0.0%'});XLSX.utils.book_append_sheet(book,results,'Resultados');XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(filters()),'Filtros');if(lastSelection.outsideAvailable)XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Escuela','Área','Al menos un encuentro','Enc. 1','Enc. 2','Enc. 3','Enc. 4'],...lastSelection.outside.map(r=>[r.school,r.area,r.any,r.e1,r.e2,r.e3,r.e4])]),'Fuera del padrón');XLSX.writeFile(book,'TDD2027-numeros-por-escuela.xlsx')}
- for(const id of ['numbers-view','numbers-dependency','numbers-area','numbers-shift','numbers-metric'])$(id).addEventListener('change',render);
- $('numbers-school').addEventListener('input',render);$('numbers-clear').addEventListener('click',()=>{for(const id of ['numbers-dependency','numbers-school','numbers-area','numbers-shift'])$(id).value='';render()});$('numbers-refresh').addEventListener('click',load);$('numbers-excel').addEventListener('click',excel);$('numbers-print').addEventListener('click',()=>window.print());
- setInterval(()=>{if(!document.hidden)load()},120000);
- load();
+'use strict';
+const $=id=>document.getElementById(id), N=TDDSchoolNumbers;
+const SOURCE='1djc57JJz-pdqmLHV8x45QO_jhM8XWI76k0OdhZ5Lg3E';
+const SOURCES=[['schools','201'],['shifts','204'],['metadata','202']];
+const keys=['expected','e1','e2','e3','e4','any'];
+let data=null,loading=false,chosenSchool='',chosenArea='',mode='all',schoolOptions=[],areaOptions=[];
+const fmt=n=>Number(n||0).toLocaleString('es-AR');
+const percent=(a,b)=>b>0?(100*a/b).toLocaleString('es-AR',{maximumFractionDigits:1})+' %':'Sin dato';
+const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n};
+const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+function options(){
+ schoolOptions=[...new Map(data.details.map(r=>[r.schoolId,{value:r.schoolId,label:r.school,sub:r.dependency}])).values()].sort((a,b)=>a.label.localeCompare(b.label,'es',{numeric:true}));
+ areaOptions=[...new Map(data.details.map(r=>[r.areaId,{value:r.areaId,label:r.area}])).values()].sort((a,b)=>a.label.localeCompare(b.label,'es'));
+}
+function picker(id,opts,choose){
+ const input=$(id),list=$(id+'-options');
+ const show=()=>{
+  const q=normalize(input.value);const found=opts().filter(o=>normalize(o.label+' '+(o.sub||'')).includes(q));
+  list.replaceChildren(...found.map(o=>{const b=el('button','',o.label+(o.sub?' · '+o.sub:''));b.type='button';b.setAttribute('role','option');b.addEventListener('mousedown',event=>event.preventDefault());b.addEventListener('click',()=>{input.value=o.label;list.hidden=true;input.setAttribute('aria-expanded','false');choose(o.value);render()});return b}));
+  if(!found.length)list.append(el('p','','No se encontraron coincidencias.'));
+  list.hidden=false;input.setAttribute('aria-expanded','true');
+ };
+ input.addEventListener('focus',show);input.addEventListener('input',()=>{choose('');mode=chosenSchool?'school':chosenArea?'area':'all';render();show()});
+ input.addEventListener('keydown',e=>{if(e.key==='Escape'){list.hidden=true;input.setAttribute('aria-expanded','false')}if(e.key==='Enter'&&!list.hidden){const first=list.querySelector('button');if(first){e.preventDefault();first.click()}}});
+ document.addEventListener('click',e=>{if(!input.parentElement.contains(e.target)){list.hidden=true;input.setAttribute('aria-expanded','false')}});
+}
+function subset(){
+ let rows=data.details;
+ if(chosenSchool)rows=rows.filter(r=>r.schoolId===chosenSchool);
+ if(chosenArea)rows=rows.filter(r=>r.areaId===chosenArea);
+ return rows;
+}
+function createKpi(label,value,hint,primary){
+ const box=el('div','numbers-kpi'+(primary?' primary':''));box.append(el('span','',label),el('strong','',value),el('small','',hint));return box;
+}
+function progress(a,b){const track=el('div','numbers-progress'),fill=el('span');fill.style.width=(b?Math.min(100,100*a/b):0)+'%';track.append(fill);return track}
+function makeCard(title,tag,row,sub){
+ const card=el('article','numbers-detail-card');card.append(el('span','numbers-card-tag',tag),el('h3','',title));
+ if(sub)card.append(el('p','numbers-context',sub));
+ for(const [label,value] of [['Esperados (POF)',fmt(row.expected)],['Participaron al menos una vez',fmt(row.any)],['Participación',percent(row.any,row.expected)]]){
+ const line=el('div','numbers-row');line.append(el('span','',label),el('b','',value));card.append(line)}
+ card.append(progress(row.any,row.expected));
+ const mini=el('div','numbers-mini-encounters');
+ for(let i=1;i<=4;i++){const tile=el('div','', 'Enc. '+i);tile.append(el('b','',fmt(row['e'+i])));mini.append(tile)}
+ card.append(mini);return card;
+}
+function render(){
+ if(!data)return;const rows=subset(),total=N.sum(rows);
+ const school=schoolOptions.find(o=>o.value===chosenSchool),area=areaOptions.find(o=>o.value===chosenArea);
+ $('numbers-selection-label').textContent=[school?.label,area?.label].filter(Boolean).join(' · ')||'Todas las escuelas y áreas';
+ $('numbers-result-count').textContent=new Set(rows.map(r=>r.schoolId)).size+' escuelas · '+new Set(rows.map(r=>r.areaId)).size+' áreas';
+ $('numbers-cards').replaceChildren(createKpi('Docentes esperados (POF)',fmt(total.expected),'Universo convocado',true),createKpi('Participaron al menos una vez',fmt(total.any),'Registro en uno o más encuentros'),createKpi('Participación',percent(total.any,total.expected),'Sobre docentes esperados'),createKpi('Sin registro',fmt(Math.max(0,total.expected-total.any)),'No equivale necesariamente a ausencia'));
+ $('numbers-encounters').replaceChildren(...[1,2,3,4].map(i=>{const n=el('article','numbers-encounter');n.append(el('h3','','Encuentro '+i),el('strong','',fmt(total['e'+i])),el('p','',percent(total['e'+i],total.expected)+' de '+fmt(total.expected)+' esperados'),progress(total['e'+i],total.expected));return n}));
+ const groupKey=chosenSchool?'area':'schoolId';const group=N.group(rows,[groupKey]);
+ const lookup=new Map(rows.map(r=>[r.schoolId,{school:r.school,dependency:r.dependency}]));
+ group.sort((a,b)=>(groupKey==='area'?a.area:lookup.get(a.schoolId)?.school||'').localeCompare(groupKey==='area'?b.area:lookup.get(b.schoolId)?.school||'','es',{numeric:true}));
+ $('numbers-detail-title').textContent=chosenSchool?'Áreas de la escuela':chosenArea?'Escuelas del área':'Participación por escuela';
+ const detail=$('numbers-detail');detail.replaceChildren(...group.map(r=>makeCard(groupKey==='area'?r.area:lookup.get(r.schoolId)?.school||r.schoolId,groupKey==='area'?'ÁREA':lookup.get(r.schoolId)?.dependency||'ESCUELA',r)));
+ if(!rows.length)detail.append(el('p','numbers-empty','No hay datos para esta combinación. Elegí otra escuela o área.'));
+ let out=data.outside;
+ if(chosenSchool)out=out.filter(r=>r.schoolId===chosenSchool);
+ if(chosenArea)out=out.filter(r=>r.areaId===chosenArea);
+ const outside=$('numbers-outside');
+ outside.replaceChildren(...out.map(r=>{const n=el('article','numbers-detail-card');n.append(el('span','numbers-card-tag','FUERA DEL PADRÓN'),el('h3','',r.school),el('p','numbers-context',r.area));const s=el('div','numbers-row');s.append(el('span','','Al menos un encuentro'),el('b','',fmt(r.any)));n.append(s);const m=el('div','numbers-mini-encounters');for(let i=1;i<=4;i++){const a=el('div','','Enc. '+i);a.append(el('b','',fmt(r['e'+i])));m.append(a)}n.append(m);return n}));
+ if(!out.length)outside.append(el('p','numbers-empty','No hay registros fuera del padrón en esta selección.'));
+}
+async function load(){
+ if(loading)return;loading=true;$('numbers-refresh').disabled=true;$('numbers-status').textContent='Actualizando datos agregados…';
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+ try{
+ const tables=Object.fromEntries(await Promise.all(SOURCES.map(async([key,gid])=>{
+ const url='https://docs.google.com/spreadsheets/d/'+SOURCE+'/export?'+new URLSearchParams({format:'csv',gid,_:String(Date.now())});
+ const response=await fetch(url,{signal:controller.signal,credentials:'omit',cache:'no-store'});
+ if(!response.ok)throw Error('La planilla respondió HTTP '+response.status);
+ return [key,N.csv(await response.text())];
+ })));
+ data=N.parse(tables.schools,tables.shifts,tables.metadata,TDDCross);options();render();
+ $('numbers-status').textContent='Actualizado: '+new Date().toLocaleString('es-AR')+' · '+schoolOptions.length+' escuelas disponibles.';
+ }catch(err){$('numbers-status').textContent=(data?'No se pudo actualizar; se conservan los últimos datos. ':'No se pudieron cargar los resúmenes. ')+(err.name==='AbortError'?'La consulta tardó demasiado.':err.message)}
+ finally{clearTimeout(timer);loading=false;$('numbers-refresh').disabled=false}
+}
+picker('numbers-school',()=>schoolOptions,value=>{chosenSchool=value;mode=value?'school':chosenArea?'area':'all'});
+picker('numbers-area',()=>areaOptions,value=>{chosenArea=value;mode=value?'area':chosenSchool?'school':'all'});
+// Pickers use dynamic option arrays after the first successful fetch.
+$('numbers-all').addEventListener('click',()=>{chosenSchool='';chosenArea='';$('numbers-school').value='';$('numbers-area').value='';render()});
+$('numbers-clear').addEventListener('click',()=>{chosenSchool='';chosenArea='';$('numbers-school').value='';$('numbers-area').value='';render()});
+$('numbers-refresh').addEventListener('click',load);
+setInterval(()=>{if(!document.hidden)load()},120000);
+load();
 })();
