@@ -12,6 +12,8 @@ const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 function options(){
  schoolOptions=[...new Map(data.details.map(r=>[r.schoolId,{value:r.schoolId,label:r.school,sub:r.dependency}])).values()].sort((a,b)=>a.label.localeCompare(b.label,'es',{numeric:true}));
  areaOptions=[...new Map(data.details.map(r=>[r.areaId,{value:r.areaId,label:r.area}])).values()].sort((a,b)=>a.label.localeCompare(b.label,'es'));
+ $('native-school-list').replaceChildren(...schoolOptions.map(o=>new Option(o.label)));
+ $('native-area-list').replaceChildren(...areaOptions.map(o=>new Option(o.label)));
 }
 function picker(id,opts,choose){
  const input=$(id),list=$(id+'-options');
@@ -21,7 +23,11 @@ function picker(id,opts,choose){
   if(!found.length)list.append(el('p','','No se encontraron coincidencias.'));
   list.hidden=false;input.setAttribute('aria-expanded','true');
  };
- input.addEventListener('focus',show);input.addEventListener('input',()=>{choose('');mode=chosenSchool?'school':chosenArea?'area':'all';render();show()});
+ input.addEventListener('focus',show);input.addEventListener('input',()=>{
+ const exact=opts().find(o=>normalize(o.label)===normalize(input.value));
+ choose(exact?exact.value:'');
+ mode=chosenSchool?'school':chosenArea?'area':'all';render();if(!exact)show();else{list.hidden=true;input.setAttribute('aria-expanded','false')}
+});
  input.addEventListener('keydown',e=>{if(e.key==='Escape'){list.hidden=true;input.setAttribute('aria-expanded','false')}if(e.key==='Enter'&&!list.hidden){const first=list.querySelector('button');if(first){e.preventDefault();first.click()}}});
  document.addEventListener('click',e=>{if(!input.parentElement.contains(e.target)){list.hidden=true;input.setAttribute('aria-expanded','false')}});
 }
