@@ -2,6 +2,10 @@ name: TDD 2027 - Informes HTML por correo (CCO)
 on:
   schedule:
     - cron: '45 22 * * 1-5'  # 19:45 Argentina; unico envio automatico de correo
+  push:
+    branches: [main]
+    paths:
+      - .github/tdd-email-recovery-2026-11-18.trigger
   workflow_dispatch:
     inputs:
       fecha:
@@ -27,6 +31,10 @@ on:
           - enviar
 permissions:
   contents: read
+  actions: read
+concurrency:
+  group: tdd-2027-one-mail-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   informe-email:
     runs-on: ubuntu-latest
@@ -34,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verificar scripts
-        run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py scripts/tdd_alert_failed_email.py
+        run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py scripts/tdd_alert_failed_email.py scripts/tdd_email_dedupe.py
       - name: Instalar dependencias
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
       - name: Verificar fechas y columnas antes del envio
@@ -62,8 +70,15 @@ jobs:
           REPORT_SCOPE: ${{ github.event_name == 'schedule' && 'general' || inputs.alcance }}
         continue-on-error: true
         run: python3 scripts/tdd_whatsapp_report.py
+      - name: Comprobar si el informe ya fue enviado
+        id: duplicate
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPORT_DATE: ${{ inputs.fecha }}
+        run: python3 scripts/tdd_email_dedupe.py
       - name: Enviar informe por correo en CCO
-        if: ${{ github.event_name == 'schedule' || inputs.modo == 'enviar' }}
+        if: ${{ (github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar') && steps.duplicate.outputs.send == 'true' }}
         env:
           TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
@@ -77,7 +92,7 @@ jobs:
           path: report-output/mensaje.txt
           retention-days: 7
       - name: Avisar si falla el envio
-        if: ${{ failure() && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
+        if: ${{ failure() && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar') }}
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
         run: python3 scripts/tdd_alert_failed_email.py
