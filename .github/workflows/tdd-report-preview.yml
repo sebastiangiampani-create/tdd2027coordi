@@ -1,7 +1,5 @@
 name: TDD 2027 - Informe de asistencia
 on:
-  schedule:
-    - cron: "15 23 * * 1-5" # 20:15 Argentina (UTC-3), lunes a viernes
   workflow_dispatch:
     inputs:
       fecha:
