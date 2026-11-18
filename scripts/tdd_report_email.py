@@ -57,15 +57,15 @@ def day(v):
     for fmt in ("%d/%m/%Y","%Y-%m-%d","%d/%m/%y","%d/%m/%Y %H:%M:%S","%d/%m/%Y %H:%M","%Y-%m-%d %H:%M:%S"):
         try: return datetime.strptime(v,fmt).date()
         except ValueError: pass
-    m=re.fullmatch(r"(\\d{1,2})[/.-](\\d{1,2})",v)
+    m=re.fullmatch(r"(\d{1,2})[/.-](\d{1,2})",v)
     if m:
         try: return date(2026,int(m[2]),int(m[1]))
         except ValueError: return None
-    m=re.search(r"Date\\((\\d+),(\\d+),(\\d+)",v)
+    m=re.search(r"Date\((\d+),(\d+),(\d+)",v)
     if m:
         try: return date(int(m[1]),int(m[2])+1,int(m[3]))
         except ValueError: return None
-    m=re.match(r"^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2,4})(?:\\s|$)",v)
+    m=re.match(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:\s|$)",v)
     if m:
         y=int(m[3]); y=y+2000 if y<100 else y
         try: return date(y,int(m[2]),int(m[1]))
