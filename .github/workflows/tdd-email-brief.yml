@@ -48,6 +48,8 @@ jobs:
           from datetime import date
           assert day("16/11/2026") == date(2026,11,16)
           assert day("16/11") == date(2026,11,16)
+          assert day("Date(2026,10,16)") == date(2026,11,16)
+          assert day("16/11/2026 10:30") == date(2026,11,16)
           assert day("Enc. 1") is None
           assert day("#N/A") is None
           header = [""]*16
