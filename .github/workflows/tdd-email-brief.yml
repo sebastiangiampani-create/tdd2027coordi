@@ -1,9 +1,7 @@
 name: TDD 2027 - Informes HTML por correo (CCO)
 on:
   schedule:
-    - cron: '7 15 * * 1-5'   # 12:07 Argentina (evitar inicio de hora)
-    - cron: '7 20 * * 1-5'   # 17:07 Argentina (evitar inicio de hora)
-    - cron: '52 22 * * 1-5'  # 19:52 Argentina (evitar inicio de hora)
+    - cron: '45 22 * * 1-5'  # 19:45 Argentina; unico envio automatico de correo
   workflow_dispatch:
     inputs:
       fecha:
@@ -61,7 +59,7 @@ jobs:
         env:
           REPORT_DRY_RUN: "1"
           REPORT_DATE: ${{ inputs.fecha }}
-          REPORT_SCOPE: ${{ github.event_name == 'schedule' && (github.event.schedule == '7 15 * * 1-5' && 'tm' || github.event.schedule == '7 20 * * 1-5' && 'tm_tt' || 'general') || inputs.alcance }}
+          REPORT_SCOPE: ${{ github.event_name == 'schedule' && 'general' || inputs.alcance }}
         continue-on-error: true
         run: python3 scripts/tdd_whatsapp_report.py
       - name: Enviar informe por correo en CCO
