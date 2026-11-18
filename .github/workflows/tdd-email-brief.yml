@@ -2,10 +2,6 @@ name: TDD 2027 - Informes HTML por correo (CCO)
 on:
   schedule:
     - cron: '45 22 * * 1-5'  # 19:45 Argentina; unico envio automatico de correo
-  push:
-    branches: [main]
-    paths:
-      - .github/tdd-email-recovery-2026-11-18.trigger
   workflow_dispatch:
     inputs:
       fecha:
