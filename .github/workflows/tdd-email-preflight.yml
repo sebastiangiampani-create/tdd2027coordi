@@ -1,0 +1,27 @@
+name: TDD 2027 - Prueba de correo SIN enviar
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tdd-email-preflight.yml
+      - .github/workflows/tdd-email-brief.yml
+      - scripts/tdd_report_email.py
+      - scripts/tdd_email_preflight.py
+      - config/destinatarios.json
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verificar-sin-enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias del informe
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
+      - name: Verificar planilla, PDF, Excel y Gmail sin mandar correos
+        env:
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+        run: python3 scripts/tdd_email_preflight.py
