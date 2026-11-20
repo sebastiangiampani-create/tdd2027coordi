@@ -1,7 +1,10 @@
 name: TDD 2027 - Informes HTML por correo (CCO)
 on:
   schedule:
-    - cron: '45 22 * * 1-5'  # 19:45 Argentina; unico envio automatico de correo
+    - cron: '45 22 * * 1-5'  # 19:45 Argentina: intento principal
+    - cron: '57 22 * * 1-5'  # 19:57 Argentina: primer respaldo sin duplicados
+    - cron: '13 23 * * 1-5'  # 20:13 Argentina: segundo respaldo sin duplicados
+    - cron: '31 23 * * 1-5'  # 20:31 Argentina: tercer respaldo sin duplicados
   workflow_dispatch:
     inputs:
       fecha:
@@ -37,6 +40,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Controlar ventana nocturna en Argentina
+        id: ventana
+        env:
+          ES_PROGRAMADO: ${{ github.event_name == 'schedule' }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from datetime import datetime, time
+          from zoneinfo import ZoneInfo
+
+          ahora = datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
+          horario = time(19, 45) <= ahora.time().replace(tzinfo=None) <= time(21, 30)
+          permitido = os.environ.get("ES_PROGRAMADO") != "true" or (ahora.weekday() < 5 and horario)
+          print(f"CONTROL_HORARIO: {ahora:%Y-%m-%d %H:%M} Argentina; envio_permitido={str(permitido).lower()}")
+          if not permitido:
+              print("ENVIO_FUERA_DE_VENTANA: no se ejecutara SMTP en este intento tardio.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("permitido=" + ("true" if permitido else "false") + "\n")
+          PY
       - name: Verificar scripts
         run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py scripts/tdd_alert_failed_email.py scripts/tdd_email_dedupe.py
       - name: Instalar dependencias
@@ -68,13 +90,13 @@ jobs:
         run: python3 scripts/tdd_whatsapp_report.py
       - name: Comprobar si el informe ya fue enviado
         id: duplicate
-        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar' }}
+        if: ${{ steps.ventana.outputs.permitido == 'true' && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPORT_DATE: ${{ inputs.fecha }}
         run: python3 scripts/tdd_email_dedupe.py
       - name: Enviar informe por correo en CCO
-        if: ${{ (github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar') && steps.duplicate.outputs.send == 'true' }}
+        if: ${{ steps.ventana.outputs.permitido == 'true' && (github.event_name == 'schedule' || inputs.modo == 'enviar') && steps.duplicate.outputs.send == 'true' }}
         env:
           TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
@@ -88,7 +110,7 @@ jobs:
           path: report-output/mensaje.txt
           retention-days: 7
       - name: Avisar si falla el envio
-        if: ${{ failure() && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.modo == 'enviar') }}
+        if: ${{ failure() && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
         run: python3 scripts/tdd_alert_failed_email.py
