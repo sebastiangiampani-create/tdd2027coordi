@@ -1,10 +1,8 @@
-name: TDD 2027 - Informes HTML por correo (CCO)
+name: TDD 2027 - CCO principal
 on:
   schedule:
-    - cron: '45 22 * * 1-5'  # 19:45 Argentina: intento principal
-    - cron: '57 22 * * 1-5'  # 19:57 Argentina: primer respaldo sin duplicados
-    - cron: '13 23 * * 1-5'  # 20:13 Argentina: segundo respaldo sin duplicados
-    - cron: '31 23 * * 1-5'  # 20:31 Argentina: tercer respaldo sin duplicados
+    - cron: '45 19 * * 1-5'  # Lunes a viernes, 19:45 Argentina
+      timezone: America/Argentina/Buenos_Aires
   workflow_dispatch:
     inputs:
       fecha:
@@ -51,7 +49,7 @@ jobs:
           from zoneinfo import ZoneInfo
 
           ahora = datetime.now(ZoneInfo("America/Argentina/Buenos_Aires"))
-          horario = time(19, 45) <= ahora.time().replace(tzinfo=None) <= time(21, 30)
+          horario = time(19, 45) <= ahora.time().replace(tzinfo=None) <= time(22, 0)
           permitido = os.environ.get("ES_PROGRAMADO") != "true" or (ahora.weekday() < 5 and horario)
           print(f"CONTROL_HORARIO: {ahora:%Y-%m-%d %H:%M} Argentina; envio_permitido={str(permitido).lower()}")
           if not permitido:
@@ -59,8 +57,13 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write("permitido=" + ("true" if permitido else "false") + "\n")
           PY
+      - name: Detener ejecucion programada fuera de la noche
+        if: ${{ github.event_name == 'schedule' && steps.ventana.outputs.permitido != 'true' }}
+        run: |
+          echo "::error::GitHub inicio el cron fuera de horario argentino. No se intento SMTP."
+          exit 1
       - name: Verificar scripts
-        run: python3 -m py_compile scripts/tdd_whatsapp_report.py scripts/tdd_report_email_brief.py scripts/tdd_report_email.py scripts/tdd_alert_failed_email.py scripts/tdd_email_dedupe.py
+        run: python3 -m py_compile scripts/tdd_report_email.py scripts/tdd_alert_failed_email.py scripts/tdd_email_dedupe.py scripts/tdd_email_preflight.py
       - name: Instalar dependencias
         run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
       - name: Verificar fechas y columnas antes del envio
@@ -81,13 +84,6 @@ jobs:
           assert validate_attendance_sheet([header,["DNI","123"]+[""]*12+["16/11/2026","Mañana"]]) == 1
           print("OK: formato de fecha y esquema de columnas O/P")
           PY
-      - name: Generar informe de texto auxiliar
-        env:
-          REPORT_DRY_RUN: "1"
-          REPORT_DATE: ${{ inputs.fecha }}
-          REPORT_SCOPE: ${{ github.event_name == 'schedule' && 'general' || inputs.alcance }}
-        continue-on-error: true
-        run: python3 scripts/tdd_whatsapp_report.py
       - name: Comprobar si el informe ya fue enviado
         id: duplicate
         if: ${{ steps.ventana.outputs.permitido == 'true' && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
@@ -102,15 +98,14 @@ jobs:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
           REPORT_DATE: ${{ inputs.fecha }}
         run: python3 scripts/tdd_report_email.py
-      - name: Guardar informe de validacion
+      - name: Validar sin enviar correo
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.modo == 'validar' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: informe-email-tdd
-          path: report-output/mensaje.txt
-          retention-days: 7
+        env:
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+        run: python3 scripts/tdd_email_preflight.py
       - name: Avisar si falla el envio
-        if: ${{ failure() && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
+        if: ${{ failure() && steps.ventana.outputs.permitido == 'true' && (github.event_name == 'schedule' || inputs.modo == 'enviar') }}
         env:
           TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
         run: python3 scripts/tdd_alert_failed_email.py
