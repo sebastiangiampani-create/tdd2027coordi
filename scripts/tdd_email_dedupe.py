@@ -1,6 +1,6 @@
 """Evita reenviar el mismo informe si GitHub ejecuta tarde el cron.
 
-Busca ejecuciones anteriores del mismo flujo con el paso SMTP completado con
+Busca ejecuciones anteriores de ambos flujos CCO con el paso SMTP completado con
 exito para la misma fecha de informe. Solo consulta metadatos de GitHub.
 No lee ni registra ninguna informacion personal de asistentes.
 """
@@ -36,7 +36,11 @@ def main():
 
     runs = api("/actions/runs?per_page=100").get("workflow_runs", [])
     for run in runs:
-        if run.get("id") == current_id or run.get("path") != ".github/workflows/tdd-email-brief.yml":
+        if run.get("id") == current_id or run.get("path") not in {
+            ".github/workflows/tdd-email-brief.yml",
+            ".github/workflows/tdd-email-backup.yml",
+            ".github/workflows/tdd-report-preview.yml",  # historico manual
+        }:
             continue
         started = run.get("created_at", "")
         if not started:
