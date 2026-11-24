@@ -45,7 +45,7 @@ def main():
     current = sum(1 for row in rows[1:] if at(row, 1) and day(at(row, 14)) == now.date())
     print(f"PRECHECK_OK: Google Sheets accesible, {valid} filas fechadas, {current} filas de hoy")
     if not current:
-        print("PRECHECK_ADVERTENCIA: aun no hay asistencias para la fecha actual; a las 19:45 el envio se cancelaria si sigue igual")
+        print("PRECHECK_ADVERTENCIA: aun no hay asistencias para la fecha actual; a las 19:00 el envio se omitira si sigue igual")
 
     example = next(row for row in rows[1:] if at(row, 1) and day(at(row, 14)))
     pdf = visual_pdf([example], now.date(), proposals)
