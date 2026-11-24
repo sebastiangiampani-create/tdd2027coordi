@@ -1,0 +1,17 @@
+name: TDD 2027 - Informe agregado de encuentros
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tdd-encuentros-resumen.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  resumen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contar encuentros por DNI distinto sin exponer datos individuales
+        run: python3 scripts/tdd_analisis_encuentros.py
