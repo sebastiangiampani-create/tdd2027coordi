@@ -71,6 +71,7 @@ def main():
     label_distribution = Counter()
     date_distribution = Counter()
     unrecognized_labels = 0
+    unrecognized_raw = Counter()
     rows_without_date = 0
     total_valid_ids_rows = 0
     cutoff = datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
@@ -97,6 +98,11 @@ def main():
         else:
             if label == "OTRO":
                 unrecognized_labels += 1
+                # Se registran unicamente etiquetas, nunca datos personales.
+                if not re.search(r"@|\b\d{6,}\b", raw_label) and len(raw_label) < 70:
+                    unrecognized_raw[raw_label] += 1
+                else:
+                    unrecognized_raw["ETIQUETA_RESERVADA"] += 1
             label_distribution[label or "BLANCO"] += 1
 
     ids = set(rows_by_person)
@@ -115,6 +121,7 @@ def main():
     print("FECHAS_AGREGADAS:", sorted(date_distribution.items()))
     print("REGISTROS_SIN_FECHA_VALIDA:", rows_without_date)
     print("REGISTROS_ENCUENTRO_NO_RECONOCIDO:", unrecognized_labels)
+    print("ETIQUETAS_NO_RECONOCIDAS:", sorted(unrecognized_raw.items()))
     print("DISCREPANCIAS_FECHA_VS_ETIQUETA_TOTAL_DNI:", sum(disagreements.values()))
     print("DISCREPANCIAS_TIPOS:", sorted(disagreements.items()))
     print("COMPROBACION_SUMATORIA_FECHAS:", sum(k * v for k, v in by_date_counts.items()))
