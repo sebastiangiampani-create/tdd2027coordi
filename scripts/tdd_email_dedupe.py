@@ -59,9 +59,24 @@ def main():
         with urllib.request.urlopen(request, timeout=25) as response:
             return json.load(response)
 
-    runs = api("/actions/runs?per_page=100").get("workflow_runs", [])
-    if not isinstance(runs, list):
-        raise RuntimeError("No fue posible consultar los envios previos; envio bloqueado")
+    # Paginar para no omitir un envio anterior cuando hay muchos
+    # deployments de GitHub Pages en el mismo dia.
+    runs = []
+    for page in range(1, 11):
+        lote = api(f"/actions/runs?per_page=100&page={page}").get("workflow_runs")
+        if not isinstance(lote, list):
+            raise RuntimeError("No fue posible consultar los envios previos; envio bloqueado")
+        runs.extend(lote)
+        if len(lote) < 100:
+            break
+        ultimo = lote[-1].get("created_at")
+        if not ultimo:
+            raise RuntimeError("Historial de ejecuciones incompleto; envio bloqueado")
+        ultimo_dia = datetime.fromisoformat(ultimo.replace("Z", "+00:00")).astimezone(TZ).date()
+        if ultimo_dia < fecha:
+            break
+    else:
+        raise RuntimeError("Demasiadas ejecuciones para auditar duplicados; envio bloqueado")
 
     def jobs_for_run(previous_id):
         jobs = api(f"/actions/runs/{previous_id}/jobs?filter=all&per_page=100").get("jobs")
