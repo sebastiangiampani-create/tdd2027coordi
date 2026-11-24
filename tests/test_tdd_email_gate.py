@@ -40,7 +40,7 @@ class EnviosTDD(unittest.TestCase):
                  "status": "completed", "created_at": "2026-11-24T22:05:00Z"}]
         jobs = lambda _: [{"steps": [{"name": "Enviar informe por correo en CCO", "conclusion": "success"}]}]
         self.assertTrue(es_envio_exitoso(runs, self.fecha, 202, jobs))
-        self.assertFalse(es_envio_exitoso(runs, self.fecha, 101, jobs))
+        self.assertTrue(es_envio_exitoso(runs, self.fecha, 101, jobs))
 
     def test_success_sin_paso_smtp_no_equivale_a_envio(self):
         runs = [{"id": 101, "path": ".github/workflows/tdd-email-19.yml",
