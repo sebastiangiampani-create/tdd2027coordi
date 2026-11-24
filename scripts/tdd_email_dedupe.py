@@ -20,9 +20,11 @@ PASO_SMTP = "Enviar informe por correo en CCO"
 
 def es_envio_exitoso(runs, fecha, run_id, jobs_for_run):
     for run in runs:
-        if run.get("id") == run_id or run.get("path") not in HISTORICOS:
+        if run.get("path") not in HISTORICOS:
             continue
-        if run.get("status") != "completed":
+        # En un reintento del mismo run puede haber un intento anterior
+        # aceptado por SMTP. Revisar tambien sus jobs previos.
+        if run.get("id") != run_id and run.get("status") != "completed":
             continue
         creado = run.get("created_at", "")
         if not creado:
