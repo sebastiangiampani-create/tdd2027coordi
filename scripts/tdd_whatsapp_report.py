@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from tdd_report_email import read, at, day, count, norm, PLANNED, SHIFTS, percent
+from tdd_report_data import read, at, day, count, norm, PLANNED, SHIFTS, percent
 
 GRAPH="https://graph.facebook.com/v25.0"
 
