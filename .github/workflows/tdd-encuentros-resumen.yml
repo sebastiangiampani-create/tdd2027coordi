@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/tdd-encuentros-resumen.yml
+      - scripts/tdd_analisis_encuentros.py
   workflow_dispatch:
 permissions:
   contents: read
