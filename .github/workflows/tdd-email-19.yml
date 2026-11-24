@@ -1,0 +1,89 @@
+name: TDD 2027 - Informe general 19:00 CCO
+
+on:
+  # GitHub usa UTC. Buenos Aires = UTC-3: 22:00 UTC = 19:00 ARG.
+  # Los siguientes disparos solo comprueban y recuperan si no hubo envio;
+  # NO envian duplicados ni envian nada sin asistencia de la fecha.
+  schedule:
+    - cron: '0 22 * * *'    # Principal: 19:00 Argentina
+    - cron: '20 22 * * *'   # Recuperacion: 19:20 Argentina
+    - cron: '45 22 * * *'   # Recuperacion: 19:45 Argentina
+    - cron: '15 23 * * *'   # Ultima recuperacion: 20:15 Argentina
+  # Pruebas de integridad por cambios de codigo. Nunca envian correos.
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tdd-email-19.yml
+      - scripts/tdd_email_gate.py
+      - scripts/tdd_email_dedupe.py
+      - scripts/tdd_email_preflight.py
+      - scripts/tdd_report_email.py
+      - tests/test_tdd_email_gate.py
+      - config/destinatarios.json
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: tdd-2027-unico-email-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verificar-sin-enviar:
+    name: Verificar configuracion sin enviar correos
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
+      - name: Verificar sintaxis Python
+        run: python3 -m py_compile scripts/tdd_report_email.py scripts/tdd_email_gate.py scripts/tdd_email_dedupe.py scripts/tdd_email_preflight.py
+      - name: Probar reglas de horario fecha y duplicados
+        run: python3 -m unittest discover -s tests -p 'test_tdd_email_gate.py' -v
+      - name: Verificar Excel PDF y SMTP sin enviar
+        env:
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
+        run: python3 scripts/tdd_email_preflight.py
+
+  informe-19hs:
+    name: Enviar CCO solo con asistencia del dia
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias
+        run: python3 -m pip install --disable-pip-version-check openpyxl msoffcrypto-tool cairosvg reportlab
+      - name: Probar reglas de horario fecha y duplicados
+        run: python3 -m unittest discover -s tests -p 'test_tdd_email_gate.py' -v
+      - name: Comprobar si hay carga de asistencia de HOY
+        id: asistencia
+        run: python3 scripts/tdd_email_gate.py
+      - name: Registrar omision sin asistencia
+        if: ${{ steps.asistencia.outputs.hay_asistencia == 'false' }}
+        run: echo "NO_ENVIO: sin asistencia o fuera de la ventana horaria argentina."
+      - name: Comprobar que NO se haya enviado antes
+        id: unico
+        if: ${{ steps.asistencia.outputs.hay_asistencia == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPORT_DATE: ${{ steps.asistencia.outputs.fecha }}
+        run: python3 scripts/tdd_email_dedupe.py
+      - name: Comprobar PDF Excel y acceso SMTP sin enviar
+        if: ${{ steps.asistencia.outputs.hay_asistencia == 'true' && steps.unico.outputs.enviar == 'true' }}
+        env:
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
+        run: python3 scripts/tdd_email_preflight.py
+      - name: Enviar informe por correo en CCO
+        if: ${{ steps.asistencia.outputs.hay_asistencia == 'true' && steps.unico.outputs.enviar == 'true' }}
+        env:
+          TDD_GMAIL_APP_PASSWORD: ${{ secrets.TDD_GMAIL_APP_PASSWORD }}
+          TDD_EXCEL_PASSWORD: ${{ secrets.TDD_EXCEL_PASSWORD }}
+          REPORT_DATE: ${{ steps.asistencia.outputs.fecha }}
+        run: python3 scripts/tdd_report_email.py
